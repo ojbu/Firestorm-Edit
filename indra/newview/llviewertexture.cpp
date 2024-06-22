@@ -544,6 +544,29 @@ void LLViewerTexture::getGPUMemoryForTextures(S32Megabytes &gpu, S32Megabytes &p
     }
 }
 
+// <FS:Ansariel> Restrict texture memory by available physical system memory
+static bool isSystemMemoryForTextureLow()
+{
+    static LLFrameTimer timer;
+    static S32Megabytes physical_res = S32Megabytes(S32_MAX);
+
+    static LLCachedControl<S32> fs_min_free_main_memory(gSavedSettings, "FSMinFreeMainMemoryTextureDiscardThreshold");
+    const S32Megabytes MIN_FREE_MAIN_MEMORY(fs_min_free_main_memory);
+
+    if (timer.getElapsedTimeF32() < GPU_MEMORY_CHECK_WAIT_TIME) //call this once per second.
+    {
+        return physical_res < MIN_FREE_MAIN_MEMORY;
+    }
+
+    timer.reset();
+
+    //check main memory, only works for windows.
+    LLMemory::updateMemoryInfo();
+    physical_res = LLMemory::getAvailableMemKB();
+    return physical_res < MIN_FREE_MAIN_MEMORY;
+}
+// </FS:Ansariel>
+
 //static
 void LLViewerTexture::updateClass()
 {
