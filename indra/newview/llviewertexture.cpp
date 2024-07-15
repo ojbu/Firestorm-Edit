@@ -1966,12 +1966,12 @@ bool LLViewerFetchedTexture::updateFetch()
     S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
     // TommyTheTerrible - Adjust decode priority by difference in discard
-    decode_priority = llmax(mMaxVirtualSize * ((desired_discard + 1) / 5), 2000);
+    decode_priority = llmax(mMaxVirtualSize * ((desired_discard + 1) / 5), 1024);
     decode_priority *= 1 + getMaxFaceImportance();
     if (current_discard < 5 && desired_discard < current_discard)
         decode_priority = llmax((decode_priority / 100), 1024);
     if (forParticle() || forHUD())
-        decode_priority *= 9000;
+        decode_priority *= 500;
 
     if (mIsFetching)
     {
@@ -2130,8 +2130,6 @@ bool LLViewerFetchedTexture::updateFetch()
         }
     }
 
-    desired_discard = llmin(desired_discard, getMaxDiscardLevel());
-
     bool make_request = true;
     if (decode_priority <= 0)
     {
@@ -2206,6 +2204,7 @@ bool LLViewerFetchedTexture::updateFetch()
             desired_discard += override_tex_discard_level;
         }
 
+        desired_discard = llmin(desired_discard, MAX_DISCARD_LEVEL);
         // bypass texturefetch directly by pulling from LLTextureCache
         S32 fetch_request_discard = -1;
         fetch_request_discard = LLAppViewer::getTextureFetch()->createRequest(mFTType, mUrl, getID(), getTargetHost(), decode_priority,
