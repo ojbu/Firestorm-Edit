@@ -929,64 +929,55 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         if (face->mAvatar->mDrawable)
                             distance = face->mAvatar->mDrawable->mDistanceWRTCamera;
                     }
-                    if (distance <= drawDistance)
+                    if (distance <= drawDistance || face->getDrawable()->isVisible())
                     {
-                        // TommyTheTerrible - Do not update textures outside of draw distance and let avatar mesh load before detailed
-                        // texturing.
-                        //if ((face->mAvatar && face->mAvatar->getRezzedStatus() < 1))
-                        //{
-                        //    vsize = 1024;
-                        //}
-                        //else
-                        //{
-                            const LLTextureEntry *te = face->getTextureEntry();
-                            vsize = face->getPixelArea();
-                            // TommyTheTerrible - User's avatar always rendered at discard 0.
-                            if (face->isState(LLFace::PARTICLE))
+                        const LLTextureEntry *te = face->getTextureEntry();
+                        vsize = face->getPixelArea();
+                        // TommyTheTerrible - User's avatar always rendered at discard 0.
+                        if (face->isState(LLFace::PARTICLE))
+                        {
+                            vsize = 128 * 128;
+                            imagep->setForParticle();
+                            continue;
+                        }
+                        static LLCachedControl<F32> bias_unimportant_threshold(gSavedSettings, "TextureBiasUnimportantFactor", 0.25f);
+                        importance = face->getImportanceToCamera();
+
+                        if (!(face->isState(LLFace::TEXTURE_ANIM)))
+                        {
+                            // scale desired texture resolution higher or lower depending on texture scale
+                            F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
+                            min_scale     = llmax(min_scale * min_scale, 0.1f);
+
+                            vsize /= min_scale;
+                        }
+                        vsize /= powf(4, LLViewerTexture::sDesiredDiscardBias - 0.99f);
+
+                        F32  radius;
+                        F32  cos_angle_to_view_dir;
+                        bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
+                        if (!in_frustum || !face->getDrawable()->isVisible() ||
+                            face->getImportanceToCamera() < bias_unimportant_threshold)
+                        {  // further reduce by discard bias when off screen or occluded
+                            vsize /= 2;
+                        }
+                        // If rigged, wait for all mesh to load to avoid stealing bandwidth.
+                        vsize *= ((face->isState(LLFace::RIGGED)) ? llmin(face->mAvatar->getRezzedStatus(), 2) : 1);
+
+                        if (i == 0)
+                        {
+                            // TommyTheTerrible - Grab Material for processing later.
+                            LLFetchedGLTFMaterial *mat = te ? (LLFetchedGLTFMaterial *) te->getGLTFRenderMaterial() : nullptr;
+                            llassert(mat == nullptr || dynamic_cast<LLFetchedGLTFMaterial *>(te->getGLTFRenderMaterial()) != nullptr);
+                            if (mat)
                             {
-                                vsize = 128 * 128;
-                                imagep->setForParticle();
-                                continue;
+                                materialList.resize(2 * materialCount + 1);
+                                materialList[materialCount] = mat;
+                                materialCount++;
                             }
-                            static LLCachedControl<F32> bias_unimportant_threshold(gSavedSettings, "TextureBiasUnimportantFactor", 0.25f);
-                            importance = face->getImportanceToCamera();
-
-                            if (!(face->isState(LLFace::TEXTURE_ANIM)))
-                            {
-                                // scale desired texture resolution higher or lower depending on texture scale
-                                F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
-                                min_scale     = llmax(min_scale * min_scale, 0.1f);
-
-                                vsize /= min_scale;
-                            }
-                            vsize /= powf(4, LLViewerTexture::sDesiredDiscardBias - 0.99f);
-
-                            F32  radius;
-                            F32  cos_angle_to_view_dir;
-                            bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
-                            if (!in_frustum || !face->getDrawable()->isVisible() ||
-                                face->getImportanceToCamera() < bias_unimportant_threshold)
-                            {  // further reduce by discard bias when off screen or occluded
-                                vsize /= 2;
-                            }
-                            // If rigged, wait for all mesh to load to avoid stealing bandwidth.
-                            vsize *= ((face->isState(LLFace::RIGGED)) ? llmin(face->mAvatar->getRezzedStatus(), 2) : 1);
-
-                            if (i == 0)
-                            {
-                                // TommyTheTerrible - Grab Material for processing later.
-                                LLFetchedGLTFMaterial *mat = te ? (LLFetchedGLTFMaterial *) te->getGLTFRenderMaterial() : nullptr;
-                                llassert(mat == nullptr || dynamic_cast<LLFetchedGLTFMaterial *>(te->getGLTFRenderMaterial()) != nullptr);
-                                if (mat)
-                                {
-                                    materialList.resize(2 * materialCount + 1);
-                                    materialList[materialCount] = mat;
-                                    materialCount++;
-                                }
-                            }
-                        //}
+                        }
                     }
-                    if (face->isState(LLFace::HUD_RENDER) || (face->isState(LLFace::RIGGED) && face->mAvatar->isSelf()))
+                    if (face->isState(LLFace::HUD_RENDER) || face->mAvatar->isSelf())
                     {
                         vsize = (1024 * 1024);
                         importance = 1.f;
@@ -995,8 +986,8 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                 }
 
                 //vsize = llmin(vsize, (2048 * 2048));
-                //if (vsize > 0)
-                //    vsize = llmax(vsize, 600);
+                if (vsize > 0)
+                    vsize = llmax(vsize, (32*32));  // Try to avoid sizes smaller than 32x32 pixels.
                 assignSize = llmax(vsize, assignSize);
                 assignImportance = llmax(importance, assignImportance);
                 // TommyTheTerrible - Limit face processing to one particle to avoid unnecessary work or griefer attacks.
@@ -1042,9 +1033,14 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     {
         if (imagep->getLastReferencedTimer()->getElapsedTimeF32() > lazy_flush_timeout)
         {
-            // Remove the unused image from the image list
-            deleteImage(imagep);
-            imagep = NULL; // should destroy the image
+            if (!gTextureList.mlastTextureDelete ||
+                (gRenderStartTime.getElapsedTimeF32() - gTextureList.mlastTextureDelete) < gTextureList.mTextureDeleteDelay)
+            {
+                // Remove the unused image from the image list
+                deleteImage(imagep);
+                imagep = NULL; // should destroy the image
+                gTextureList.mlastTextureDelete = gRenderStartTime.getElapsedTimeF32();
+            }
         }
         return;
     }
@@ -1054,7 +1050,12 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
         {
             if (imagep->getElapsedLastReferencedSavedRawImageTime() > max_inactive_time)
             {
-                imagep->destroySavedRawImage();
+                if (!gTextureList.mlastTextureDelete ||
+                    (gRenderStartTime.getElapsedTimeF32() - gTextureList.mlastTextureDelete) < gTextureList.mTextureDeleteDelay)
+                {
+                    imagep->destroySavedRawImage();
+                    gTextureList.mlastTextureDelete = gRenderStartTime.getElapsedTimeF32();
+                }
             }
         }
 
