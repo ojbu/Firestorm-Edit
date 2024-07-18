@@ -2158,12 +2158,7 @@ bool LLViewerFetchedTexture::updateFetch()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - replace with cached");
         make_request = false;
-        if (!gTextureList.mlastRawCacheReset ||
-            (gRenderStartTime.getElapsedTimeF32() - gTextureList.mlastRawCacheReset) < gTextureList.mRawCacheResetDelay)
-        {
-            switchToCachedImage(); //use the cached raw data first
-            gTextureList.mlastRawCacheReset = gRenderStartTime.getElapsedTimeF32();
-        }
+        switchToCachedImage(); //use the cached raw data first
     }
 
     if (make_request)
@@ -3320,12 +3315,7 @@ void LLViewerLODTexture::processTextureStats()
         {
             if (current_discard < mCachedRawDiscardLevel && mDesiredDiscardLevel >= mCachedRawDiscardLevel && !mForceToSaveRawImage)
             { // should scale down
-                if (!gTextureList.mlastRawCacheReset ||
-                    (gRenderStartTime.getElapsedTimeF32() - gTextureList.mlastRawCacheReset) < gTextureList.mRawCacheResetDelay)
-                {
-                    scaleDown();
-                    gTextureList.mlastRawCacheReset = gRenderStartTime.getElapsedTimeF32();
-                }
+                scaleDown();
            }
         }
 

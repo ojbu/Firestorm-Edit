@@ -225,11 +225,6 @@ public:
 
     BOOL mForceResetTextureStats;
 
-    F32 mRawCacheResetDelay = 0.1f;
-    F32 mlastRawCacheReset;
-    F32 mTextureDeleteDelay = 0.1f;
-    F32 mlastTextureDelete;
-
     // <FS:Ansariel> Fast cache stats
     static U32 sNumFastCacheReads;
 
