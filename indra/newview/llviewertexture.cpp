@@ -1320,12 +1320,21 @@ void LLViewerFetchedTexture::setDeletionCandidate()
 }
 
 //set the texture inactive
-void LLViewerFetchedTexture::setInactive()
+//  <FS:3T> Adjusted function to allow mTextureState to be flipped back to Active if sent a true bool.
+void LLViewerFetchedTexture::setInactive(bool found_on_face)
 {
-    if(mTextureState == ACTIVE && mGLTexturep.notNull() && mGLTexturep->getTexName() && !mGLTexturep->getBoundRecently())
+
+    if (mTextureState > DELETION_CANDIDATE && mTextureState != NO_DELETE && mGLTexturep.notNull() && mGLTexturep->getTexName() &&
+        !mGLTexturep->getBoundRecently())
     {
-        mTextureState = INACTIVE;
+        if (found_on_face) {
+            mTextureState = ACTIVE;
+        }
+        else {
+            mTextureState = INACTIVE;
+        }
     }
+    // </FS:3T>
 }
 
 BOOL LLViewerFetchedTexture::isFullyLoaded() const
@@ -1737,11 +1746,10 @@ void LLViewerFetchedTexture::scheduleCreateTexture()
 void LLViewerFetchedTexture::setKnownDrawSize(S32 width, S32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
-    if(mKnownDrawWidth < width || mKnownDrawHeight < height)
+    if (mKnownDrawWidth != width || mKnownDrawHeight != height) // <FS:3T> Allow mKnowns to be set to anything so long as different.
     {
-        mKnownDrawWidth = llmax(mKnownDrawWidth, width);
-        mKnownDrawHeight = llmax(mKnownDrawHeight, height);
-
+        mKnownDrawWidth = width;
+        mKnownDrawHeight = height;
         mKnownDrawSizeChanged = TRUE;
         mFullyLoaded = FALSE;
     }
@@ -1776,6 +1784,11 @@ void LLViewerFetchedTexture::processTextureStats()
     if(mFullyLoaded)
     {
         if(mDesiredDiscardLevel > mMinDesiredDiscardLevel)//need to load more
+        {
+            mDesiredDiscardLevel = llmin(mDesiredDiscardLevel, mMinDesiredDiscardLevel);
+            mFullyLoaded = FALSE;
+        }
+        if (getDiscardLevel() > mMinDesiredDiscardLevel)
         {
             mDesiredDiscardLevel = llmin(mDesiredDiscardLevel, mMinDesiredDiscardLevel);
             mFullyLoaded = FALSE;
@@ -1820,17 +1833,22 @@ void LLViewerFetchedTexture::processTextureStats()
             {
                 if (mFullWidth > desired_size || mFullHeight > desired_size)
                 {
-                    mDesiredDiscardLevel = 1;
+                    mDesiredDiscardLevel = MAX_DISCARD_LEVEL;  //<FS:3T> Setting starting Discard for oversized images to max discard (they can handle it, they have more discards)
                 }
                 else
                 {
-                    mDesiredDiscardLevel = 0;
+                    mDesiredDiscardLevel = MAX_DISCARD_LEVEL - 1;  //<FS:3T> Setting starting Discard for normal images to one under max discard
+                    
                 }
             }
             else if(mKnownDrawSizeChanged)//known draw size is set
             {
                 mDesiredDiscardLevel = (S8)llmin(log((F32)mFullWidth / mKnownDrawWidth) / log_2,
                                                      log((F32)mFullHeight / mKnownDrawHeight) / log_2);
+                // <FS:3T> mMinDesiredDiscardLevel should be adjusted depending on image size
+                //       so that smaller files are not using too high of a discard
+                mMinDesiredDiscardLevel = (S8)llclamp(log2(sqrt(mFullWidth * mFullHeight)) - 5, 0, 5);
+                // </FS:3T>
                 mDesiredDiscardLevel =  llclamp(mDesiredDiscardLevel, (S8)0, (S8)getMaxDiscardLevel());
                 mDesiredDiscardLevel = llmin(mDesiredDiscardLevel, mMinDesiredDiscardLevel);
             }
@@ -1965,14 +1983,17 @@ bool LLViewerFetchedTexture::updateFetch()
     S32 current_discard = getCurrentDiscardLevelForFetching();
     S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
-    // TommyTheTerrible - Adjust decode priority by difference in discard
-    decode_priority = llmax(mMaxVirtualSize * ((desired_discard + 1) / 5), 1024);
-    decode_priority *= 1 + getMaxFaceImportance();
-    if (current_discard < 5 && desired_discard < current_discard)
-        decode_priority = llmax((decode_priority / 100), 1024);
+    // <FS:3T> Adjust decode priority depending on various factors
+    if (decode_priority > 0)
+    {
+        // Let's make faster, high discard decodes higher priority than slower, low discard decodes, so we do the easy work first.
+        decode_priority = mMaxVirtualSize * (((F32) desired_discard + 1.f) / 5.f);
+        // Let's make textures with a lot of important faces a higher priority.
+        decode_priority *= llclamp(getMaxFaceImportance(), 1, 4);
+    }
     if (forParticle() || forHUD())
-        decode_priority *= 500;
-
+        decode_priority = (2048 * 2048); // Let's make sure particles, HUDs and user's avatar (assigned as HUD) load faster.
+    // </FS:3T>
     if (mIsFetching)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - is fetching");
@@ -2151,15 +2172,17 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current < min");
         make_request = false;
     }
-    else if(mCachedRawImage.notNull() // can be empty
-            && mCachedRawImageReady
-            && (current_discard < 0 || current_discard > mCachedRawDiscardLevel)
-            && (current_discard != mCachedRawDiscardLevel || desired_discard > mCachedRawDiscardLevel))
-    {
-        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - replace with cached");
-        make_request = false;
-        switchToCachedImage(); //use the cached raw data first
-    }
+    // <FS:3T> I think this is better to have inside the make_request check later.
+    //else if(mCachedRawImage.notNull() // can be empty
+    //        && mCachedRawImageReady
+    //        && (current_discard < 0 || current_discard > mCachedRawDiscardLevel)
+    //        && (current_discard != mCachedRawDiscardLevel || desired_discard > mCachedRawDiscardLevel))
+    //{
+    //    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - replace with cached");
+    //    make_request = false;
+    //    switchToCachedImage(); //use the cached raw data first
+    //}
+    // </FS:3T>
 
     if (make_request)
     {
@@ -2180,6 +2203,25 @@ bool LLViewerFetchedTexture::updateFetch()
                 LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current <= desired");
                 make_request = false;
             }
+            // <FS:3T> If the texture has been set to inactive or delete, let's not do any fetches.
+            if (mTextureState < ACTIVE)
+            {
+                make_request = false;
+            }
+            // </FS:3T>
+            // <FS:3T> Check if raw cached image should be used only if a request is suggested
+            // This was originally at lines 2167-2177.
+            if (mCachedRawImage.notNull()  // can be empty
+                && mCachedRawImageReady)
+            {
+                if (current_discard < 0)
+                {
+                    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - replace with cached");
+                    make_request = false;
+                    switchToCachedImage();  // use the cached raw data first
+                }
+            }
+            // </FS:3T>
         }
     }
 
@@ -2364,7 +2406,7 @@ void LLViewerFetchedTexture::setLoadedCallback( loaded_callback_func loaded_call
     {
         mSaveRawImage = TRUE;
     }
-    if (mNeedsAux && mAuxRawImage.isNull() && getDiscardLevel() >= 0)
+    if (mNeedsAux && mAuxRawImage.isNull() && getDiscardLevel() >= 0 && mTextureState > INACTIVE) // <FS:3T/> Stop further fetches on textures not active.
     {
         if(mHasAux)
         {
@@ -3309,16 +3351,16 @@ void LLViewerLODTexture::processTextureStats()
         // if possible.  Now we check to see if we have it, and take the
         // proper action if we don't.
         //
-
-        if (mBoostLevel < LLGLTexture::BOOST_AVATAR_BAKED &&
-            current_discard >= 0)
-        {
-            if (current_discard < mCachedRawDiscardLevel && mDesiredDiscardLevel >= mCachedRawDiscardLevel && !mForceToSaveRawImage)
-            { // should scale down
-                scaleDown();
-           }
-        }
-
+        //  <FS:3T> I don't think this is necessary anymore.
+        //if (mBoostLevel < LLGLTexture::BOOST_AVATAR_BAKED &&
+        //    current_discard >= 0)
+        //{
+        //    if (current_discard < mDesiredDiscardLevel && !mForceToSaveRawImage)
+        //    { // should scale down
+        //        scaleDown();
+        //   }
+        //}
+        // </FS:3T>
         if (isUpdateFrozen() // we are out of memory and nearing max allowed bias
             && mBoostLevel < LLGLTexture::BOOST_SCULPTED
             && mDesiredDiscardLevel < current_discard)

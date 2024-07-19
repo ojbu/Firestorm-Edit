@@ -413,7 +413,7 @@ public:
     BOOL isInactive() ;
     BOOL isDeletionCandidate();
     void setDeletionCandidate() ;
-    void setInactive() ;
+    void setInactive(bool found_on_face) ; // <FS:3T> Allow for receiving a bool.
     BOOL getUseDiscard() const { return mUseMipMaps && !mDontDiscard; }
     //---------------
 
