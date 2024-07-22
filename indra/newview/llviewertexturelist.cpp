@@ -890,8 +890,10 @@ static void touch_texture(LLViewerFetchedTexture* tex, F32 vsize)
         // <FS:3T> Adjust function to derive height and width from virtual size if Full dimensions known.
         if (vsize > 0 && tex->getFullHeight() > 0 && tex->getFullWidth() > 0)
         {
-            S32 width  = sqrt(vsize) * (F32) (tex->getFullWidth() / tex->getFullHeight());
-            S32 height = sqrt(vsize) * (F32) (tex->getFullHeight() / tex->getFullWidth());
+            S32 totalsize = tex->getFullWidth() * tex->getFullHeight();
+            S32 sizeRatio = (vsize / totalsize);
+            S32 width = sizeRatio * tex->getFullWidth();
+            S32 height = sizeRatio * tex->getFullHeight();
             tex->setKnownDrawSize(width, height);
         }
         else {
@@ -935,15 +937,13 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                 if (face && face->getViewerObject() && face->getTextureEntry())
                 {
                     vsize = 0;
-                    F32 distance = face->getDrawable()->mDistanceWRTCamera;
-                    if (face->mAvatar && face->mAvatar->mDrawable) // <FS:3T> All textures attached to an avatar uses the avatar's distance, not the face.
-                    {
-                            distance = face->mAvatar->mDrawable->mDistanceWRTCamera;
-                    }
+                    // TommyTheTerrible - Use avatar distance instead of face to avoid animations possibly causing issues.
+                    F32 distance = (face->mAvatar && face->mAvatar->mDrawable) ? face->mAvatar->mDrawable->mDistanceWRTCamera
+                                                                               : face->getDrawable()->mDistanceWRTCamera;
                     if (distance <= drawDistance || (face->getDrawable() && face->getDrawable()->isVisible())) // <FS:3T> Only use faces within draw distance or visible.
                     {
                             const LLTextureEntry *te = face->getTextureEntry();
-                            vsize = face->getPixelArea();
+                            vsize = face->getTextureVirtualSize();
                             // TommyTheTerrible - User's avatar always rendered at discard 0.
                             if (face->isState(LLFace::PARTICLE))
                             {
@@ -951,7 +951,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                                 imagep->setForParticle();
                                 continue;
                             }
-                            static LLCachedControl<F32> bias_unimportant_threshold(gSavedSettings, "TextureBiasUnimportantFactor", 0.25f);
+                            //static LLCachedControl<F32> bias_unimportant_threshold(gSavedSettings, "TextureBiasUnimportantFactor", 0.25f);
                             importance += face->getImportanceToCamera();
 
                             if (!(face->isState(LLFace::TEXTURE_ANIM)))
@@ -962,8 +962,6 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
                                 vsize /= min_scale;
                             }
-                            if (LLViewerTexture::sDesiredDiscardBias > 2.f && face->getImportanceToCamera() < 0.90f)
-                                vsize /= powf(4, llmax(LLViewerTexture::sDesiredDiscardBias - face->getImportanceToCamera(), 1));
                             // <FS:3T> Avoid changing vsize to reduce decoding unnecessarily.
                             //F32  radius;
                             //F32  cos_angle_to_view_dir;
@@ -973,7 +971,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                             //{  // further reduce by discard bias when off screen or occluded
                                 //vsize /= 2;
                             //}
-                            // </FS:3T>                            
+                            // </FS:3T>
 
                             if (i == 0)
                             {
@@ -989,6 +987,9 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                             }
                         //}
                     }
+                    else {
+                        vsize = (32 * 32); // Allow textures outside draw distance and unseen to be decoded to at least discard 6
+                    }
                     if (face->isState(LLFace::HUD_RENDER) || (face->mAvatar && face->mAvatar->isSelf())) // <FS:3T> Huds and user's avatar are very important.
                     {
                         vsize = (1024 * 1024);
@@ -996,15 +997,13 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                     }
                 }
 
-                vsize = llmin(vsize, (2048 * 2048)); // limit to a maximum size
-                F32 finalSize = pow(round(sqrt(vsize)), 2); // round the dimensions to reduce extranious decodes
-                assignSize = llmax(finalSize, assignSize);
-                assignImportance = llmax(importance, assignImportance);
-                // TommyTheTerrible - Limit face processing to one particle to avoid unnecessary work or griefer attacks.
-                //      This might make other faces using same texture be blurry, but that's the cost of efficiency.
-                //if (imagep->forParticle())
-                //    break;
+                assignSize = llmax(vsize, assignSize);                
+                assignImportance = llmax(importance, assignImportance);  
             }
+            // Importance of 1 = close, 0 = hard to see.
+            // Adapt the threshold by the sDesiredDiscardBias itself so more faces affected as sDesiredDiscardBias grows larger.
+            // sDesiredDiscardBias is currently being started at 20% of VRAM, allowing 5 discard levels of progression
+            assignSize /= llmax(powf(4, (LLViewerTexture::sDesiredDiscardBias * (1 - assignImportance))), 1);
             if (assignSize >= 0)
             {
                 if (materialCount > 0)
@@ -1027,9 +1026,10 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
             }
         }
     }
+
+    imagep->setMaxFaceImportance(assignImportance);
+
     bool OnFace = (assignSize > 0); // If assignSize is greater than zero, we found at least one face for the texture.
-    //if (assignImportance > 0)
-        imagep->setMaxFaceImportance(assignImportance);
 
     F32 lazy_flush_timeout = 60.f; // stop decoding
     F32 max_inactive_time = 60.f; // actually delete
