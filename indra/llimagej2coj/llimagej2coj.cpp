@@ -893,7 +893,7 @@ bool LLImageJ2COJ::getMetadata(LLImageJ2C &base)
         return false;
     }
 
-    base.mDiscardLevel = discard_level;
+    //base.mDiscardLevel = discard_level; <FS:3T> The readHeader function is incorrectly determining discard and always setting to 0 so this should not be done.
     base.setSize(width, height, components);
     return true;
 }
