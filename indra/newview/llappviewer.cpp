@@ -5032,11 +5032,11 @@ bool LLAppViewer::initCache()
         // <FS> If the J2C has changed since the last run, clear the cache
         const std::string j2c_info = LLImageJ2C::getEngineInfo();
         const std::string j2c_last = gSavedSettings.getString("LastJ2CVersion");
-        if (j2c_info != j2c_last && !j2c_last.empty())
+        /*if (j2c_info != j2c_last && !j2c_last.empty())
         {
             LL_INFOS("AppCache") << "Scheduling texture purge, based on LastJ2CVersion mismatch." << LL_ENDL;
             mPurgeTextures = true;
-        }
+        }*/
         gSavedSettings.setString("LastJ2CVersion", j2c_info);
         // </FS>
 
