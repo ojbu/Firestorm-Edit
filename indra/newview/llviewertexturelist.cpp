@@ -949,7 +949,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         {
                             vsize = 256 * 256;
                             imagep->setForParticle();
-                            importance = 1.0f;
+                            importance = (F32)in_frustum;
                             continue;
                         }
                         importance = face->getImportanceToCamera();
