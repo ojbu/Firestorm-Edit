@@ -904,66 +904,123 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     llassert(!gCubeSnapshot);
 
     static LLCachedControl<F32> bias_distance_scale(gSavedSettings, "TextureBiasDistanceScale", 1.f);
+    static LLCachedControl<F32> draw_distance(gSavedSettings, "RenderFarClip");
+
+    F32 assignSize = -1;
+    F32 assignImportance = 0; // <TS:3T> Importance should always be zero or greater.
 
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE
     {
         for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; ++i)
         {
+            std::vector<class LLFetchedGLTFMaterial*> materialList;
+            U32 materialCount = 0;
             for (U32 fi = 0; fi < imagep->getNumFaces(i); ++fi)
             {
+                F32 vsize = -1;
+                F32 importance = 0;
                 LLFace* face = (*(imagep->getFaceList(i)))[fi];
 
                 if (face && face->getViewerObject() && face->getTextureEntry())
                 {
-// <FS:Beq> Fix Blurry textures and use importance weight
-                    F32 radius;
-                    F32 cos_angle_to_view_dir;
-                    BOOL in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
-                    static LLCachedControl<F32> bias_unimportant_threshold(gSavedSettings, "TextureBiasUnimportantFactor", 0.25f);
-// </FS:Beq>
-                    F32 vsize = face->getPixelArea();
-
-                    // scale desired texture resolution higher or lower depending on texture scale
-                    const LLTextureEntry* te = face->getTextureEntry();
-                    F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
-                    min_scale = llmax(min_scale*min_scale, 0.1f);
-
-                    vsize /= min_scale;
-// <FS:Beq> Fix Blurry textures and use importance weight
-// #if LL_DARWIN
-//                     vsize /= 1.f + LLViewerTexture::sDesiredDiscardBias*(1.f+face->getDrawable()->mDistanceWRTCamera*bias_distance_scale);
-// #else
-//                     vsize /= LLViewerTexture::sDesiredDiscardBias;
-//                     vsize /= llmax(1.f, (LLViewerTexture::sDesiredDiscardBias-1.f) * (1.f + face->getDrawable()->mDistanceWRTCamera * bias_distance_scale));
-
-
-//                     F32 radius;
-//                     F32 cos_angle_to_view_dir;
-//                     BOOL in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius); 
-//                     if (!in_frustum || !face->getDrawable()->isVisible())
-// </FS:Beq>
-                    if (!in_frustum || !face->getDrawable()->isVisible() || face->getImportanceToCamera() < bias_unimportant_threshold)
-                    { // further reduce by discard bias when off screen or occluded
-                        vsize /= LLViewerTexture::sDesiredDiscardBias;
+                    vsize = 0;
+                    // <TS:3T> - Use avatar distance instead of face to avoid animations possibly causing issues.
+                    F32 distance = 0;
+                    LLPointer<LLDrawable> drawable;
+                    if (face->mAvatar && face->mAvatar->mDrawable) {
+                        drawable = face->mAvatar->mDrawable;
                     }
-// #endif // <FS:Beq/>
-                    // if a GLTF material is present, ignore that face
-                    // as far as this texture stats go, but update the GLTF material
-                    // stats
-                    LLFetchedGLTFMaterial* mat = te ? (LLFetchedGLTFMaterial*)te->getGLTFRenderMaterial() : nullptr;
-                    llassert(mat == nullptr || dynamic_cast<LLFetchedGLTFMaterial*>(te->getGLTFRenderMaterial()) != nullptr);
-                    if (mat)
-                    {
-                        touch_texture(mat->mBaseColorTexture, vsize);
-                        touch_texture(mat->mNormalTexture, vsize);
-                        touch_texture(mat->mMetallicRoughnessTexture, vsize);
-                        touch_texture(mat->mEmissiveTexture, vsize);
+                    else {
+                        drawable = face->getDrawable();
                     }
-                    else
+                    // mDistanceWRTCamera does not seem to be updated reliably, so if it reports something unusual than we request an update.
+                    if (drawable->mDistanceWRTCamera > 1024) // Max draw distance is 1028m.
+                        drawable->updateDistance(*LLViewerCamera::getInstance(), true);
+                    distance = drawable->mDistanceWRTCamera;
+                    if (distance <= draw_distance || (face->getDrawable() && face->getDrawable()->isVisible())) // <TS:3T> Only use faces within draw distance or visible.
                     {
-                        imagep->addTextureStats(vsize);
+                        const LLTextureEntry *te = face->getTextureEntry();
+                        F32  radius;
+                        F32  cos_angle_to_view_dir;
+                        bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius); // Do this before getPixelArea so it's updated.
+                        vsize = face->getPixelArea();
+                        // TommyTheTerrible - User's avatar always rendered at discard 0.
+                        if (face->isState(LLFace::PARTICLE))
+                        {
+                            vsize = 256 * 256;
+                            imagep->setForParticle();
+                            importance = 1.0f;
+                            continue;
+                        }
+                        importance = face->getImportanceToCamera();
+
+                        if (!(face->isState(LLFace::TEXTURE_ANIM)))
+                        {
+                            // scale desired texture resolution higher or lower depending on texture scale
+                            const LLTextureEntry* te = face->getTextureEntry();
+                            F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
+                            min_scale     = llmax(min_scale * min_scale, 0.1f);
+
+                            vsize /= min_scale;
+                        }
+                        F32 distance_ratio = distance / drawDistance;
+                        // Reduce vsize using DiscardBias with influence from face's distance in relation to set clipping distance (Draw Distance).
+                        vsize /= llmax(pow(floor((LLViewerTexture::sDesiredDiscardBias * distance_ratio)), 4), 1);
+                        // <TS:3T> Avoid changing vsize to reduce decoding unnecessarily.
+                        //if (!in_frustum || !face->getDrawable()->isVisible() ||
+                        //    face->getImportanceToCamera() < bias_unimportant_threshold)
+                        //{  // further reduce by discard bias when off screen or occluded
+                        //    vsize /= 2;
+                        //}
+                        // </TS:3T>
+
+                        if (i == 0)
+                        {
+                            // TommyTheTerrible - Grab Material for processing later.
+                            LLFetchedGLTFMaterial *mat = te ? (LLFetchedGLTFMaterial *) te->getGLTFRenderMaterial() : nullptr;
+                            llassert(mat == nullptr || dynamic_cast<LLFetchedGLTFMaterial *>(te->getGLTFRenderMaterial()) != nullptr);
+                            if (mat)
+                            {
+                                materialList.resize(2 * materialCount + 1);
+                                materialList[materialCount] = mat;
+                                materialCount++;
+                            }
+                        }
+                    }
+                    else {
+                        vsize = (32 * 32);  // Allow textures outside draw distance and unseen to be decoded to at least discard 5
+                        importance = 1.0f;
+                    }
+                    if (face->isState(LLFace::HUD_RENDER) || (face->mAvatar && face->mAvatar->isSelf())) // <TS:3T> Huds and user's avatar are very important.
+                    {
+                        vsize = (1024 * 1024);
+                        importance = 1.0f;
+                        imagep->setForHUD();
                     }
                 }
+
+                assignSize = llmax(vsize, assignSize);
+                assignImportance = llmax(importance, assignImportance);
+            }
+            if (assignSize > 0)
+            {
+                if (materialCount > 0)
+                {
+                    // TommyTheTerrible - Process found materials.
+                    for (U32 fi = 0; fi < materialCount; ++fi)
+                    {
+                        if (materialList[fi])
+                        {
+                            touch_texture(materialList[fi]->mBaseColorTexture, assignSize);
+                            touch_texture(materialList[fi]->mNormalTexture, assignSize);
+                            touch_texture(materialList[fi]->mMetallicRoughnessTexture, assignSize);
+                            touch_texture(materialList[fi]->mEmissiveTexture, assignSize);
+                        }
+                    }
+                }
+                else {
+                    touch_texture(imagep, assignSize); // <TS:3T/> Altered touch_texture function to setKnownDrawSize if full size information available.
+                }                
             }
         }
     }
