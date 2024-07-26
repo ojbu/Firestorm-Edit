@@ -1410,58 +1410,62 @@ void LLViewerFetchedTexture::addToCreateTexture()
         mNeedsCreateTexture = false;
         destroyRawImage();
     }
-    else if(!force_update && getDiscardLevel() > -1 && getDiscardLevel() <= mRawDiscardLevel)
-    {
-        mNeedsCreateTexture = false;
-        destroyRawImage();
-    }
+    //<TS:3T> Stop expecting all new discards to be lower
+    //else if(!force_update && getDiscardLevel() > -1 && getDiscardLevel() <= mRawDiscardLevel)
+    //{
+    //    mNeedsCreateTexture = false;
+    //    destroyRawImage();
+    //}
+    // </TS:3T>
     else
     {
         LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
-#if 1
-        //
-        //if mRequestedDiscardLevel > mDesiredDiscardLevel, we assume the required image res keep going up,
-        //so do not scale down the over qualified image.
-        //Note: scaling down image is expensensive. Do it only when very necessary.
-        //
-        if(mRequestedDiscardLevel <= mDesiredDiscardLevel && !mForceToSaveRawImage)
-        {
-            S32 w = mFullWidth >> mRawDiscardLevel;
-            S32 h = mFullHeight >> mRawDiscardLevel;
+// <TS:3T> This code is completely unnecessary. Redecoding from the JPEG2000 is faster.
+//#if 1
+//        //
+//        //if mRequestedDiscardLevel > mDesiredDiscardLevel, we assume the required image res keep going up,
+//        //so do not scale down the over qualified image.
+//        //Note: scaling down image is expensensive. Do it only when very necessary.
+//        //
+        //if(mRequestedDiscardLevel <= mDesiredDiscardLevel && !mForceToSaveRawImage)
+        //{
+            //S32 w = mFullWidth >> mRawDiscardLevel;
+            //S32 h = mFullHeight >> mRawDiscardLevel;
 
-            //if big image, do not load extra data
-            //scale it down to size >= LLViewerTexture::sMinLargeImageSize
-            if(w * h > LLViewerTexture::sMinLargeImageSize)
-            {
-                S32 d_level = llmin(mRequestedDiscardLevel, (S32)mDesiredDiscardLevel) - mRawDiscardLevel;
+            ////if big image, do not load extra data
+            ////scale it down to size >= LLViewerTexture::sMinLargeImageSize
+            //if(w * h > LLViewerTexture::sMinLargeImageSize)
+            //{
+            //    S32 d_level = llmin(mRequestedDiscardLevel, (S32)mDesiredDiscardLevel) - mRawDiscardLevel;
 
-                if(d_level > 0)
-                {
-                    S32 i = 0;
-                    while((d_level > 0) && ((w >> i) * (h >> i) > LLViewerTexture::sMinLargeImageSize))
-                    {
-                        i++;
-                        d_level--;
-                    }
-                    if(i > 0)
-                    {
-                        mRawDiscardLevel += i;
-                        if(mRawDiscardLevel >= getDiscardLevel() && getDiscardLevel() > 0)
-                        {
-                            mNeedsCreateTexture = false;
-                            destroyRawImage();
-                            return;
-                        }
+            //    if(d_level > 0)
+            //    {
+            //        S32 i = 0;
+            //        while((d_level > 0) && ((w >> i) * (h >> i) > LLViewerTexture::sMinLargeImageSize))
+            //        {
+            //            i++;
+            //            d_level--;
+            //        }
+            //        if(i > 0)
+            //        {
+            //            mRawDiscardLevel += i;
+            //            if(mRawDiscardLevel >= getDiscardLevel() && getDiscardLevel() > 0)
+            //            {
+            //                mNeedsCreateTexture = false;
+            //                destroyRawImage();
+            //                return;
+            //            }
 
-                        {
-                            //make a duplicate in case somebody else is using this raw image
-                            mRawImage = mRawImage->scaled(w >> i, h >> i);
-                        }
-                    }
-                }
-            }
-        }
-#endif
+            //            {
+            //                //make a duplicate in case somebody else is using this raw image
+            //                mRawImage = mRawImage->scaled(w >> i, h >> i);
+            //            }
+            //        }
+            //    }
+            //}
+        //}
+//#endif
+// </TS:3T> 
         scheduleCreateTexture();
     }
     return;
@@ -1732,11 +1736,10 @@ void LLViewerFetchedTexture::scheduleCreateTexture()
 void LLViewerFetchedTexture::setKnownDrawSize(S32 width, S32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
-    if(mKnownDrawWidth < width || mKnownDrawHeight < height)
+    if (width > 0 && height > 0 && (mKnownDrawWidth != width || mKnownDrawHeight != height))  // <TS:3T> Allow mKnowns to be set to anything so long as different.
     {
-        mKnownDrawWidth = llmax(mKnownDrawWidth, width);
-        mKnownDrawHeight = llmax(mKnownDrawHeight, height);
-
+        mKnownDrawWidth = width;
+        mKnownDrawHeight = height;
         mKnownDrawSizeChanged = TRUE;
         mFullyLoaded = FALSE;
     }
@@ -1831,7 +1834,7 @@ void LLViewerFetchedTexture::processTextureStats()
             }
             mKnownDrawSizeChanged = FALSE;
 
-            if(getDiscardLevel() >= 0 && (getDiscardLevel() <= mDesiredDiscardLevel))
+            if(getDiscardLevel() >= 0 && (getDiscardLevel() == mDesiredDiscardLevel)) // <TS:3T> Stop expecting all new discards to be lower
             {
                 mFullyLoaded = TRUE;
             }
@@ -2014,7 +2017,7 @@ bool LLViewerFetchedTexture::updateFetch()
             }
             mRawDiscardLevel = fetch_discard;
             if ((mRawImage->getDataSize() > 0 && mRawDiscardLevel >= 0) &&
-                (current_discard < 0 || mRawDiscardLevel < current_discard))
+                (current_discard < 0 || mRawDiscardLevel != current_discard))  // <TS:3T> Stop expecting all new discards to always be lower
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - data good");
                 mFullWidth = mRawImage->getWidth() << mRawDiscardLevel;
@@ -2175,9 +2178,9 @@ bool LLViewerFetchedTexture::updateFetch()
         else
         {
             // already at a higher resolution mip, don't discard
-            if (current_discard >= 0 && current_discard <= desired_discard)
+            if (current_discard >= 0 && current_discard == desired_discard)  // <TS:3T> Stop expecting all new discards to always be lower
             {
-                LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current <= desired");
+                LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current == desired");
                 make_request = false;
             }
         }
@@ -2328,10 +2331,12 @@ void LLViewerFetchedTexture::setLoadedCallback( loaded_callback_func loaded_call
         gTextureList.mCallbackList.insert(this);
         mLoadedCallbackDesiredDiscardLevel = (S8)discard_level;
     }
-    else
-    {
-        mLoadedCallbackDesiredDiscardLevel = llmin(mLoadedCallbackDesiredDiscardLevel, (S8)discard_level);
-    }
+    // <TS:3T> Stop expecting all new discards to always be lower
+    //else
+    //{
+    //    mLoadedCallbackDesiredDiscardLevel = llmin(mLoadedCallbackDesiredDiscardLevel, (S8)discard_level); 
+    //}
+    // </TS:3T>
 
     if(mPauseLoadedCallBacks)
     {
@@ -2640,7 +2645,7 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
                     // We have useful data, just run the callbacks
                     run_raw_callbacks = true;
                 }
-                else if (entryp->mLastUsedDiscard > best_raw_discard)
+                else if (entryp->mLastUsedDiscard != best_raw_discard)  //<TS:3T> Stop expecting all new discards to be lower
                 {
                     // We can readback data, and then run the callbacks
                     need_readback = true;
@@ -2651,7 +2656,7 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
         else
         {
             // Needs just GL
-            if (entryp->mLastUsedDiscard > gl_discard)
+            if (entryp->mLastUsedDiscard != gl_discard)  //<TS:3T> Stop expecting all new discards to be lower
             {
                 // We have enough data, run this callback requiring GL data
                 run_gl_callbacks = true;
@@ -2687,7 +2692,7 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
         {
             callback_list_t::iterator curiter = iter++;
             LLLoadedCallbackEntry *entryp = *curiter;
-            if (entryp->mNeedsImageRaw && (entryp->mLastUsedDiscard > mRawDiscardLevel))
+            if (entryp->mNeedsImageRaw && (entryp->mLastUsedDiscard != mRawDiscardLevel)) //<TS:3T> Stop expecting all new discards to be lower
             {
                 // If we've loaded all the data there is to load or we've loaded enough
                 // to satisfy the interested party, then this is the last time that
@@ -2698,7 +2703,7 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
                 {
                     LL_WARNS() << "Raw Image with no Aux Data for callback" << LL_ENDL;
                 }
-                BOOL final = mRawDiscardLevel <= entryp->mDesiredDiscard ? TRUE : FALSE;
+                BOOL final = mRawDiscardLevel == entryp->mDesiredDiscard ? TRUE : FALSE; //<TS:3T> Stop expecting all new discards to be lower
                 //LL_INFOS() << "Running callback for " << getID() << LL_ENDL;
                 //LL_INFOS() << mRawImage->getWidth() << "x" << mRawImage->getHeight() << LL_ENDL;
                 entryp->mLastUsedDiscard = mRawDiscardLevel;
@@ -2792,7 +2797,7 @@ LLImageRaw* LLViewerFetchedTexture::reloadRawImage(S8 discard_level)
         return NULL;
     }
 
-    if(mSavedRawDiscardLevel >= 0 && mSavedRawDiscardLevel <= discard_level)
+    if(mSavedRawDiscardLevel >= 0 && mSavedRawDiscardLevel != discard_level) // <TS:3T> Stop expecting the discard level to always be lower
     {
         if (mSavedRawDiscardLevel != discard_level
             && mBoostLevel != BOOST_ICON
