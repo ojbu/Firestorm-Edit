@@ -904,7 +904,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     llassert(!gCubeSnapshot);
 
     static LLCachedControl<F32> bias_distance_scale(gSavedSettings, "TextureBiasDistanceScale", 1.f);
-
+    bool onFace = false;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE
     {
         for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; ++i)
@@ -916,6 +916,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                 if (face && face->getViewerObject() && face->getTextureEntry())
                 {
 // <FS:Beq> Fix Blurry textures and use importance weight
+                    onFace = true;
                     F32 radius;
                     F32 cos_angle_to_view_dir;
                     BOOL in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
@@ -1020,7 +1021,8 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
             imagep->getLastReferencedTimer()->reset();
 
             //reset texture state.
-            imagep->setInactive();
+            if(!onFace)
+                imagep->setInactive();
         }
     }
 
