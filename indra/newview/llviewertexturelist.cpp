@@ -963,7 +963,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
                             vsize /= min_scale;
                         }
-                        F32 distance_ratio = distance / drawDistance;
+                        F32 distance_ratio = distance / draw_distance;
                         // Reduce vsize using DiscardBias with influence from face's distance in relation to set clipping distance (Draw Distance).
                         vsize /= llmax(pow(floor((LLViewerTexture::sDesiredDiscardBias * distance_ratio)), 4), 1);
                         // <TS:3T> Avoid changing vsize to reduce decoding unnecessarily.
