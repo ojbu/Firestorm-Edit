@@ -1060,30 +1060,14 @@ void LLTextureFetchWorker::setupPacketData()
 // Locks:  Mw (ctor invokes without lock)
 void LLTextureFetchWorker::setDesiredDiscard(S32 discard, S32 size)
 {
-    bool prioritize = false;
-    if (mDesiredDiscard != discard)
+    //<TS:3T> Change discard and size if either not equal and reset state if done.
+    if (mDesiredDiscard != discard || size != mDesiredSize)
     {
-        if (!haveWork())
-        {
-            if (!mFetcher->mDebugPause)
-            {
-                addWork(0);
-            }
-        }
-        else if (mDesiredDiscard < discard)
-        {
-            prioritize = true;
-        }
         mDesiredDiscard = discard;
         mDesiredSize = size;
     }
-    else if (size > mDesiredSize)
-    {
-        mDesiredSize = size;
-        prioritize = true;
-    }
     mDesiredSize = llmax(mDesiredSize, TEXTURE_CACHE_ENTRY_SIZE);
-    if ((prioritize && mState == INIT) || mState == DONE)
+    if (mState == DONE)
     {
         setState(INIT);
     }
@@ -1956,7 +1940,7 @@ bool LLTextureFetchWorker::doWork(S32 param)
         mRawImage = NULL;
         mAuxImage = NULL;
         llassert_always(mFormattedImage.notNull());
-        S32 discard = mHaveAllData ? 0 : mLoadedDiscard;
+        //S32 discard = mHaveAllData ? 0 : mLoadedDiscard; <TS:3T> Stop overriding requested discard size with 0
         mDecoded  = FALSE;
         setState(DECODE_IMAGE_UPDATE);
         LL_DEBUGS(LOG_TXT) << mID << ": Decoding. Bytes: " << mFormattedImage->getDataSize() << " Discard: " << discard
@@ -1966,7 +1950,7 @@ bool LLTextureFetchWorker::doWork(S32 param)
         // then init and request decode again with first decode
         // still in progress, assign a sufficiently unique id
         mDecodeHandle = LLAppViewer::getImageDecodeThread()->decodeImage(mFormattedImage,
-                                                                       discard,
+                                                                       mDesiredDiscard,
                                                                        mNeedsAux,
                                                                        new DecodeResponder(mFetcher, mID, this));
         if (mDecodeHandle == 0)
@@ -2086,7 +2070,7 @@ bool LLTextureFetchWorker::doWork(S32 param)
     if (mState == DONE)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_THREAD("tfwdw - DONE");
-        if (mDecodedDiscard >= 0 && mDesiredDiscard < mDecodedDiscard)
+        if (mDecodedDiscard >= 0 && mDesiredDiscard != mDecodedDiscard) // <TS:3T> Stop expecting all new discards to be lower
         {
             // More data was requested, return to INIT
             setState(INIT);
