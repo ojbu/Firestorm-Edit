@@ -61,6 +61,7 @@
 #include "llviewerdisplay.h"
 #include "llviewerwindow.h"
 #include "llprogressview.h"
+#include "llwindow.h"
 
 ////////////////////////////////////////////////////////////////////////////
 
