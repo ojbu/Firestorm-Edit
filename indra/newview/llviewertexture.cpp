@@ -827,11 +827,7 @@ void LLViewerTexture::addTextureStats(F32 virtual_size, BOOL needs_gltexture) co
     }
 
     virtual_size = llmin(virtual_size, LLViewerFetchedTexture::sMaxVirtualSize);
-
-    if (virtual_size > mMaxVirtualSize)
-    {
-        mMaxVirtualSize = virtual_size;
-    }
+    mMaxVirtualSize = virtual_size;
 }
 
 void LLViewerTexture::resetTextureStats()
@@ -1147,6 +1143,7 @@ void LLViewerFetchedTexture::init(bool firstinit)
     mIsRawImageValid = FALSE;
     mRawDiscardLevel = INVALID_DISCARD_LEVEL;
     mMinDiscardLevel = 0;
+    mMaxFaceImportance = 1.f;
 
     mHasFetcher = FALSE;
     mIsFetching = FALSE;
@@ -1156,6 +1153,8 @@ void LLViewerFetchedTexture::init(bool firstinit)
     mFetchDeltaTime = 999999.f;
     mRequestDeltaTime = 0.f;
     mForSculpt = FALSE;
+    mForHUD = FALSE;
+    mForParticle = FALSE;
     mIsFetched = FALSE;
     mInFastCacheList = FALSE;
 
@@ -1986,6 +1985,18 @@ bool LLViewerFetchedTexture::updateFetch()
     S32 current_discard = getCurrentDiscardLevelForFetching();
     S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
+    // <TS:3T> Adjust decode priority depending on various factors
+    if (decode_priority > 0)
+    {
+        // Let's make faster, high discard decodes higher priority than slower, low discard decodes, so we do the easy work first.
+        decode_priority = mMaxVirtualSize * (((F32) desired_discard + 1.f) / 5.f);
+        // Let's make textures with a lot of important faces a higher priority.
+        decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
+    }
+    if (forParticle() || forHUD())
+        decode_priority = (2048 * 2048); // Let's make sure particles, HUDs and user's avatar (assigned as HUD) load faster.
+    decode_priority = llmax(decode_priority, (256 * 256));
+    // </TS:3T>
 
     if (mIsFetching)
     {
@@ -3322,7 +3333,7 @@ void LLViewerLODTexture::processTextureStats()
     }
 
     // decay max virtual size over time
-    mMaxVirtualSize *= 0.8f;
+    //mMaxVirtualSize *= 0.8f; <TS:3T> We should not do this, allow true values to stay in queue.
 
     // selection manager will immediately reset BOOST_SELECTED but never unsets it
     // unset it immediately after we consume it
