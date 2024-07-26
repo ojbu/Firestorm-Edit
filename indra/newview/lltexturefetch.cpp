@@ -1943,7 +1943,7 @@ bool LLTextureFetchWorker::doWork(S32 param)
         //S32 discard = mHaveAllData ? 0 : mLoadedDiscard; <TS:3T> Stop overriding requested discard size with 0
         mDecoded  = FALSE;
         setState(DECODE_IMAGE_UPDATE);
-        LL_DEBUGS(LOG_TXT) << mID << ": Decoding. Bytes: " << mFormattedImage->getDataSize() << " Discard: " << discard
+        LL_DEBUGS(LOG_TXT) << mID << ": Decoding. Bytes: " << mFormattedImage->getDataSize() << " Discard: " << mDesiredDiscard
                            << " All Data: " << mHaveAllData << LL_ENDL;
 
         // In case worked manages to request decode, be shut down,
