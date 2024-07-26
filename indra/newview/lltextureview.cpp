@@ -244,7 +244,7 @@ void LLTextureBar::draw()
     S32 state =
         mImagep->mNeedsCreateTexture ? LAST_STATE+1 :
         mImagep->mFullyLoaded ? LAST_STATE+2 :
-        mImagep->mMinDiscardLevel > 0 ? LAST_STATE+3 :
+        //mImagep->mMinDiscardLevel > 0 ? LAST_STATE+3 : // <TS:3T> Stop expecting all new discards to be lower
         mImagep->mIsMissingAsset ? LAST_STATE+4 :
         !mImagep->mIsFetching ? LAST_STATE+5 :
         mImagep->mFetchState;
