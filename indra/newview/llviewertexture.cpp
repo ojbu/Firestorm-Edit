@@ -585,46 +585,21 @@ void LLViewerTexture::updateClass()
 
     F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 512.0;
     F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 512.0;
+    F64 render_bytes_alloc = LLRenderTarget::sBytesAllocated / 1024.0 / 512.0;
 
     // get an estimate of how much video memory we're using
     // NOTE: our metrics miss about half the vram we use, so this biases high but turns out to typically be within 5% of the real number
-    F32 used = (F32)ll_round(texture_bytes_alloc + vertex_bytes_alloc);
+    F32 used = (F32) ll_round(texture_bytes_alloc + vertex_bytes_alloc + render_bytes_alloc);
 
     F32 budget = max_vram_budget == 0 ? gGLManager.mVRAM : max_vram_budget;
 
-    // try to leave half a GB for everyone else, but keep at least 768MB for ourselves
-    F32 target = llmax(budget - 512.f, 768.f);
+    // TommyTheTerrible - Start Bias creep upwards at 4/5ths VRAM used.
+    F32 whatRemains = budget * 0.80f;
+    F32 target      = llmax(budget - whatRemains, 768.f);
 
-    F32 over_pct = llmax((used-target) / target, 0.f);
-    // <FS:Ansariel> Restrict texture memory by available physical system memory
-    //sDesiredDiscardBias = llmax(sDesiredDiscardBias, 1.f + over_pct);
+    F32 over_pct        = llmax((used - target) / target, 0.f);
+    sDesiredDiscardBias = llclamp(1.f + over_pct, 1, 6);
 
-    //if (sDesiredDiscardBias > 1.f)
-    //{
-    //    sDesiredDiscardBias -= gFrameIntervalSeconds * 0.01;
-    //}
-
-    if (isSystemMemoryForTextureLow())
-    {
-        // System RAM is low -> ramp up discard bias over time to free memory
-        LL_DEBUGS("TextureMemory") << "System memory is low, use more aggressive discard bias." << LL_ENDL;
-        if (sEvaluationTimer.getElapsedTimeF32() > GPU_MEMORY_CHECK_WAIT_TIME)
-        {
-            sDesiredDiscardBias += llmax(.1f, over_pct); // add at least 10% over-percentage
-            sEvaluationTimer.reset();
-        }
-    }
-    else
-    {
-        LL_DEBUGS("TextureMemory") << "System memory is plentiful, act normally." << LL_ENDL;
-        sDesiredDiscardBias = llmax(sDesiredDiscardBias, 1.f + over_pct);
-
-        if (sDesiredDiscardBias > 1.f)
-        {
-            sDesiredDiscardBias -= gFrameIntervalSeconds * 0.01;
-        }
-    }
-    // </FS:Ansariel>
 
     LLViewerTexture::sFreezeImageUpdates = false; // sDesiredDiscardBias > (desired_discard_bias_max - 1.0f);
 }
