@@ -2166,7 +2166,7 @@ bool LLViewerFetchedTexture::updateFetch()
     }
     else if(mCachedRawImage.notNull() // can be empty
             && mCachedRawImageReady
-            && (current_discard < 0 || current_discard > mCachedRawDiscardLevel))
+            && (current_discard < 0)) // <TS:3T> Only use cached image at first texture load.
     {
         make_request = false;
         switchToCachedImage(); //use the cached raw data first
@@ -3297,14 +3297,16 @@ void LLViewerLODTexture::processTextureStats()
         //
 
         S32 current_discard = getDiscardLevel();
-        if (mBoostLevel < LLGLTexture::BOOST_AVATAR_BAKED &&
-            current_discard >= 0)
-        {
-            if (current_discard < (mDesiredDiscardLevel-1) && !mForceToSaveRawImage)
-            { // should scale down
-                scaleDown();
-            }
-        }
+        // <TS:3T> We do not do this anymore, instead allow a new decode when increasing discard.
+        //if (mBoostLevel < LLGLTexture::BOOST_AVATAR_BAKED &&
+        //    current_discard >= 0)
+        //{
+        //    if (current_discard < (mDesiredDiscardLevel-1) && !mForceToSaveRawImage)
+        //    { // should scale down
+        //        scaleDown();
+        //    }
+        //}
+        // </TS:3T>
 
         if (isUpdateFrozen() // we are out of memory and nearing max allowed bias
             && mBoostLevel < LLGLTexture::BOOST_SCULPTED
