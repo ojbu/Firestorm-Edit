@@ -1033,10 +1033,10 @@ public:
         }
 
         // <FS:ND> Report amount of failed texture buffer allocations if any.
-        if (LLImageBase::getAllocationErrors())
-        {
-            addText(xpos, ypos, llformat("# textures discarded due to insufficient memory %ld", LLImageBase::getAllocationErrors()));
-        }
+        //if (LLImageBase::getAllocationErrors())
+        //{
+        //    addText(xpos, ypos, llformat("# textures discarded due to insufficient memory %ld", LLImageBase::getAllocationErrors()));
+        //}
         // </FS:ND>
     }
 

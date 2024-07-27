@@ -965,9 +965,9 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
                             vsize /= min_scale;
                         }
-                        F32 distance_ratio = distance / draw_distance;
+                        //F32 distance_ratio = distance / draw_distance;
                         // Reduce vsize using DiscardBias with influence from face's distance in relation to set clipping distance (Draw Distance).
-                        vsize /= llmax(pow(floor((LLViewerTexture::sDesiredDiscardBias * distance_ratio)), 4), 1);
+                        vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias), 4), 1);
                         // <TS:3T> Avoid changing vsize to reduce decoding unnecessarily.
                         //if (!in_frustum || !face->getDrawable()->isVisible() ||
                         //    face->getImportanceToCamera() < bias_unimportant_threshold)
@@ -988,10 +988,6 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                                 materialCount++;
                             }
                         }
-                    }
-                    else {
-                        vsize = (32 * 32);  // Allow textures outside draw distance and unseen to be decoded to at least discard 5
-                        importance = 1.0f;
                     }
                     if (face->isState(LLFace::HUD_RENDER) || (face->mAvatar && face->mAvatar->isSelf())) // <TS:3T> Huds and user's avatar are very important.
                     {
@@ -1029,7 +1025,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
     //imagep->setDebugText(llformat("%.3f - %d", sqrtf(imagep->getMaxVirtualSize()), imagep->getBoostLevel()));
 
-    F32 lazy_flush_timeout = 0.f;   // Delete after n seconds, or 0 to not delete until VRAM threshold reached.
+    F32 lazy_flush_timeout = 60.f;   // Delete after n seconds, or 0 to not delete until VRAM threshold reached.
     F32 max_inactive_time = 60.f;   // Stop making changes to texture after n seconds.
     F32 vram_max_percent = 0.95f;  // If vram reaches this percentage, we consider it full.
     U32 current_free_vram = gViewerWindow->getWindow()->getAvailableVRAMMegabytes();
