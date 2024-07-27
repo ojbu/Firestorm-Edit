@@ -175,6 +175,7 @@
 #include "llvovolume.h"
 #include "particleeditor.h"
 #include "permissionstracker.h"
+#include "fsareasearch.h"
 
 using namespace LLAvatarAppearanceDefines;
 
@@ -3435,6 +3436,42 @@ class LLAvatarTexRefresh : public view_listener_t
     }
 };
 // </FS:Zi> Texture Refresh
+
+void inspect_avatar(LLVOAvatar *avatar) {
+
+    LLFloaterReg::showInstance("area_search");
+    FSAreaSearch* area_search = LLFloaterReg::findTypedInstance<FSAreaSearch>("area_search");
+    if (area_search)
+    {
+        LLCheckBoxCtrl *exclude_attachment = area_search->getChild<LLCheckBoxCtrl>("exclude_attachment");
+        exclude_attachment->set(FALSE);
+        area_search->setExcludeAttachment(FALSE);
+        LLCheckBoxCtrl *exclude_temporary = area_search->getChild<LLCheckBoxCtrl>("exclude_temporary");
+        exclude_temporary->set(FALSE);
+        area_search->setExcludetemporary(FALSE);
+        LLCheckBoxCtrl *filter_attachment = area_search->getChild<LLCheckBoxCtrl>("filter_attachment");
+        filter_attachment->setEnabled(TRUE);
+        filter_attachment->set(TRUE);
+        area_search->setFilterAttachment(TRUE);
+        area_search->setFindOwnerText(avatar->getFullname());        
+        area_search->onButtonClickedSearch();
+        area_search->checkRegion();
+    }
+}
+
+class TSAvatarInspect : public view_listener_t
+{
+    bool handleEvent(const LLSD &userdata)
+    {
+        LLVOAvatar *avatar = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatar)
+        {
+            inspect_avatar(avatar);
+        }
+
+        return true;
+    }
+};
 
 class LLObjectReportAbuse : public view_listener_t
 {
@@ -12698,7 +12735,7 @@ void initialize_menus()
 // [/RLVa:KB]
     view_listener_t::addMenu(new LLAvatarReportAbuse(), "Avatar.ReportAbuse");
     view_listener_t::addMenu(new LLAvatarTexRefresh(), "Avatar.TexRefresh");    // ## Zi: Texture Refresh
-
+    view_listener_t::addMenu(new TSAvatarInspect(), "Avatar.Inspect");        // <TS:3T> Add Avatar Inspect
     view_listener_t::addMenu(new LLAvatarToggleMyProfile(), "Avatar.ToggleMyProfile");
     view_listener_t::addMenu(new LLAvatarTogglePicks(), "Avatar.TogglePicks");
     view_listener_t::addMenu(new LLAvatarToggleSearch(), "Avatar.ToggleSearch");
