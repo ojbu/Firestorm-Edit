@@ -8,6 +8,7 @@ include(CMakeCopyIfDifferent)
 include(Linking)
 include(OPENAL)
 include(FMODSTUDIO)
+include(MESAZINK)
 
 # When we copy our dependent libraries, we almost always want to copy them to
 # both the Release and the RelWithDebInfo staging directories. This has
@@ -102,6 +103,15 @@ if(WINDOWS)
     if (TARGET ll::openal)
         list(APPEND release_files openal32.dll alut.dll)
     endif ()
+
+    # <TS:3T> Mesa Zink DLLs
+    if( ARCH_PREBUILT_BIN_RELEASE )
+        set(mesazink_src_dir "${ARCH_PREBUILT_BIN_RELEASE}")
+    endif()    
+    if(ADDRESS_SIZE EQUAL 64)    
+        set(mesazink_files libgallium_wgl.dll opengl32.dll libglapi.dll)
+    endif(ADDRESS_SIZE EQUAL 64)
+    # </TS:3T>
 
     #*******************************
     # Copy MS C runtime dlls, required for packaging.

@@ -725,6 +725,11 @@ class Windows_x86_64_Manifest(ViewerManifest):
             #self.path('apr-1.pdb', 'libarp.pdb')
             #self.path('aprutil-1.pdb', 'libaprutil.pdb')
             # </FS:ND>
+        # Mesa Zink
+        with self.prefix(src=os.path.join(pkgdir, 'bin', 'release')):
+            self.path("libgallium_wgl.dll")
+            self.path("opengl32.dll")
+            self.path("libglapi.dll")
 
         self.path(src="licenses-win32.txt", dst="licenses.txt")
         self.path("featuretable.txt")
