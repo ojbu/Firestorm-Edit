@@ -45,6 +45,7 @@ set(cmake_SOURCE_FILES
         LLWindow.cmake
         Linking.cmake
         MediaPluginBase.cmake    # <FS:Zi> Linux volume catcher
+	MesaZink.cmake
         Meshoptimizer.cmake
         NDOF.cmake
         OPENAL.cmake
