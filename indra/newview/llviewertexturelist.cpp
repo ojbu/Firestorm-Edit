@@ -972,7 +972,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
     //imagep->setDebugText(llformat("%.3f - %d", sqrtf(imagep->getMaxVirtualSize()), imagep->getBoostLevel()));
 
-    F32 lazy_flush_timeout = 0.f;   // Delete after n seconds, or 0 to not delete until VRAM threshold reached.
+    F32 lazy_flush_timeout = 60.f;   // Delete after n seconds, or 0 to not delete until VRAM threshold reached.
     F32 max_inactive_time = 60.f;   // Stop making changes to texture after n seconds.
     F32 vram_max_percent = 0.95f;  // If vram reaches this percentage, we consider it full.
     U32 current_free_vram = gViewerWindow->getWindow()->getAvailableVRAMMegabytes();
