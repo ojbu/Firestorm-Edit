@@ -598,7 +598,8 @@ void LLViewerTexture::updateClass()
     F32 target      = llmax(budget - whatRemains, 768.f);
 
     F32 over_pct        = llmax((used - target) / target, 0.f);
-    sDesiredDiscardBias = llclamp(1.f + over_pct, 1, 6);
+    //sDesiredDiscardBias = llclamp(1.f + over_pct, 1, 6);
+    sDesiredDiscardBias = (1.f + over_pct);
 
 
     LLViewerTexture::sFreezeImageUpdates = false; // sDesiredDiscardBias > (desired_discard_bias_max - 1.0f);
@@ -1093,7 +1094,7 @@ void LLViewerFetchedTexture::init(bool firstinit)
     mFullyLoaded = FALSE;
     mCanUseHTTP = true;
     mDesiredDiscardLevel = MAX_DISCARD_LEVEL + 1;
-    mMinDesiredDiscardLevel = MAX_DISCARD_LEVEL + 1;
+    mMinDesiredDiscardLevel = MAX_DISCARD_LEVEL;
 
     mDecodingAux = FALSE;
 
@@ -2593,17 +2594,17 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
     // If we don't have a legit GL image, set it to be lower than the worst discard level
     if (gl_discard == -1)
     {
-        gl_discard = MAX_DISCARD_LEVEL + 1;
+        gl_discard = MAX_DISCARD_LEVEL;
     }
 
     //
     // Determine the quality levels of textures that we can provide to callbacks
     // and whether we need to do decompression/readback to get it
     //
-    S32 current_raw_discard = MAX_DISCARD_LEVEL + 1; // We can always do a readback to get a raw discard
+    S32 current_raw_discard = MAX_DISCARD_LEVEL; // We can always do a readback to get a raw discard
     S32 best_raw_discard = gl_discard;  // Current GL quality level
-    S32 current_aux_discard = MAX_DISCARD_LEVEL + 1;
-    S32 best_aux_discard = MAX_DISCARD_LEVEL + 1;
+    S32 current_aux_discard = MAX_DISCARD_LEVEL;
+    S32 best_aux_discard = best_raw_discard;
 
     if (mIsRawImageValid)
     {
@@ -3235,7 +3236,7 @@ void LLViewerLODTexture::processTextureStats()
     else if (mBoostLevel < LLGLTexture::BOOST_HIGH && mMaxVirtualSize <= 10.f)
     {
         // If the image has not been significantly visible in a while, we don't want it
-        mDesiredDiscardLevel = llmin(mMinDesiredDiscardLevel, (S8)(MAX_DISCARD_LEVEL + 1));
+        mDesiredDiscardLevel = llmin(mMinDesiredDiscardLevel, (S8)(MAX_DISCARD_LEVEL));
     }
     else if (!mFullWidth  || !mFullHeight)
     {
@@ -3286,7 +3287,7 @@ void LLViewerLODTexture::processTextureStats()
         discard_level = llclamp(discard_level, min_discard, (F32)MAX_DISCARD_LEVEL);
 
         // Can't go higher than the max discard level
-        mDesiredDiscardLevel = llmin(getMaxDiscardLevel() + 1, (S32)discard_level);
+        mDesiredDiscardLevel = llmin(getMaxDiscardLevel(), (S32)discard_level);
         // Clamp to min desired discard
         mDesiredDiscardLevel = llmin(mMinDesiredDiscardLevel, mDesiredDiscardLevel);
 
