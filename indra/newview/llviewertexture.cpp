@@ -2613,12 +2613,12 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
         best_aux_discard = llmin(best_aux_discard, mRawDiscardLevel); // We always decode the aux when we decode the base raw
         current_aux_discard = llmin(current_aux_discard, best_aux_discard);
     }
-    else
-    {
-        // We have no data at all, we need to get it
-        // Do this by forcing the best aux discard to be 0.
-        best_aux_discard = 0;
-    }
+    //else
+    //{
+    //    // We have no data at all, we need to get it
+    //    // Do this by forcing the best aux discard to be 0.
+    //    best_aux_discard = 0;
+    //}
 
 
     //
