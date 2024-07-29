@@ -3455,6 +3455,7 @@ void inspect_avatar(LLVOAvatar *avatar) {
         area_search->setFilterAttachment(TRUE);
         std::string avatar_search_name = avatar->getFullname();
         std::replace(avatar_search_name.begin(), avatar_search_name.end(), ' ', '.');
+        area_search->setFindOwnerText(avatar_search_name);
         area_search->onButtonClickedSearch();
         area_search->checkRegion();
     }
