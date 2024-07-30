@@ -407,7 +407,7 @@ void LLViewerTextureManager::init()
     }
     imagep->createGLTexture(0, image_raw);
     //cache the raw image
-    imagep->setCachedRawImage(0, image_raw);
+    //imagep->setCachedRawImage(0, image_raw);
     image_raw = NULL;
 #else
     LLViewerFetchedTexture::sDefaultImagep = LLViewerTextureManager::getFetchedTexture(IMG_DEFAULT, TRUE, LLGLTexture::BOOST_UI);
@@ -1283,7 +1283,7 @@ void LLViewerFetchedTexture::setForSculpt()
         destroyGLTexture(); //sculpt image does not need gl texture.
         mTextureState = ACTIVE;
     }
-    checkCachedRawSculptImage();
+    //checkCachedRawSculptImage();
     setMaxVirtualSizeResetInterval(MAX_INTERVAL);
 }
 
@@ -2821,28 +2821,28 @@ LLImageRaw* LLViewerFetchedTexture::reloadRawImage(S8 discard_level)
         }
         mRawDiscardLevel = discard_level;
     }
-    else
-    {
-        //force to fetch raw image again if cached raw image is not good enough.
-        if(mCachedRawDiscardLevel > discard_level)
-        {
-            mRawImage = mCachedRawImage;
-            mRawDiscardLevel = mCachedRawDiscardLevel;
-        }
-        else //cached raw image is good enough, copy it.
-        {
-            if(mCachedRawDiscardLevel != discard_level)
-            {
-                mRawImage = new LLImageRaw(getWidth(discard_level), getHeight(discard_level), getComponents());
-                mRawImage->copy(mCachedRawImage);
-            }
-            else
-            {
-                mRawImage = mCachedRawImage;
-            }
-            mRawDiscardLevel = discard_level;
-        }
-    }
+    //else
+    //{
+    //    //force to fetch raw image again if cached raw image is not good enough.
+    //    if(mCachedRawDiscardLevel > discard_level)
+    //    {
+    //        mRawImage = mCachedRawImage;
+    //        mRawDiscardLevel = mCachedRawDiscardLevel;
+    //    }
+    //    else //cached raw image is good enough, copy it.
+    //    {
+    //        if(mCachedRawDiscardLevel != discard_level)
+    //        {
+    //            mRawImage = new LLImageRaw(getWidth(discard_level), getHeight(discard_level), getComponents());
+    //            mRawImage->copy(mCachedRawImage);
+    //        }
+    //        else
+    //        {
+    //            mRawImage = mCachedRawImage;
+    //        }
+    //        mRawDiscardLevel = discard_level;
+    //    }
+    //}
     mIsRawImageValid = TRUE;
     sRawCount++;
 
@@ -3112,16 +3112,16 @@ void LLViewerFetchedTexture::forceToSaveRawImage(S32 desired_discard, F32 kept_t
         mDesiredSavedRawDiscardLevel = desired_discard;
 
         //copy from the cached raw image if exists.
-        if(mCachedRawImage.notNull() && mRawImage.isNull() )
-        {
-            mRawImage = mCachedRawImage;
-            mRawDiscardLevel = mCachedRawDiscardLevel;
+        //if(mCachedRawImage.notNull() && mRawImage.isNull() )
+        //{
+        //    mRawImage = mCachedRawImage;
+        //    mRawDiscardLevel = mCachedRawDiscardLevel;
 
-            saveRawImage();
+        //    saveRawImage();
 
-            mRawImage = NULL;
-            mRawDiscardLevel = INVALID_DISCARD_LEVEL;
-        }
+        //    mRawImage = NULL;
+        //    mRawDiscardLevel = INVALID_DISCARD_LEVEL;
+        //}
     }
 }
 void LLViewerFetchedTexture::destroySavedRawImage()
