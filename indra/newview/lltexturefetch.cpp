@@ -2799,8 +2799,9 @@ S32 LLTextureFetch::createRequest(FTType f_type, const std::string& url, const L
     {
         // If the requester knows nothing about the file, we fetch the smallest
         // amount of data at the lowest resolution (highest discard level) possible.
-        desired_size = TEXTURE_CACHE_ENTRY_SIZE;
+        //desired_size = TEXTURE_CACHE_ENTRY_SIZE;        
         desired_discard = MAX_DISCARD_LEVEL;
+        desired_size = LLImageJ2C::calcDataSizeJ2C(1, 1, 4, desired_discard);
     }
 
 
