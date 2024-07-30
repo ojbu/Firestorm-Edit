@@ -2165,13 +2165,13 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current < min");
         make_request = false;
     }
-    else if(mCachedRawImage.notNull() // can be empty
-            && mCachedRawImageReady
-            && (current_discard < 0)) // <TS:3T> Only use cached image at first texture load.
-    {
-        make_request = false;
-        switchToCachedImage(); //use the cached raw data first
-    }
+    //else if(mCachedRawImage.notNull() // can be empty
+    //        && mCachedRawImageReady
+    //        && (current_discard < 0)) // <TS:3T> Only use cached image at first texture load.
+    //{
+    //    make_request = false;
+    //    switchToCachedImage(); //use the cached raw data first
+    //}
 
     if (make_request)
     {

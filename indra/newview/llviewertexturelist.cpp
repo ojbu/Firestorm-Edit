@@ -642,11 +642,11 @@ LLViewerFetchedTexture* LLViewerTextureList::createImage(const LLUUID &image_id,
     }
 
     // <FS:Ansariel> Keep Fast Cache option
-    if(fast_cache_fetching_enabled)
-    {
-        mFastCacheList.insert(imagep);
-        imagep->setInFastCacheList(true);
-    }
+    //if(fast_cache_fetching_enabled)
+    //{
+    //    mFastCacheList.insert(imagep);
+    //    imagep->setInFastCacheList(true);
+    //}
     // </FS:Ansariel>
     return imagep ;
 }
@@ -829,7 +829,7 @@ void LLViewerTextureList::updateImages(F32 max_time)
     F32 remaining_time = max_time;
 
     //loading from fast cache
-    remaining_time -= updateImagesLoadingFastCache(remaining_time);
+    //remaining_time -= updateImagesLoadingFastCache(remaining_time);
     remaining_time = llmax(remaining_time, min_time);
 
     //dispatch to texture fetch threads
@@ -1273,7 +1273,7 @@ void LLViewerTextureList::decodeAllImages(F32 max_time)
     LLTimer timer;
 
     //loading from fast cache
-    updateImagesLoadingFastCache(max_time);
+    //updateImagesLoadingFastCache(max_time);
 
     // Update texture stats and priorities
     std::vector<LLPointer<LLViewerFetchedTexture> > image_list;
