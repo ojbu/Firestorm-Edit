@@ -5338,7 +5338,8 @@ void LLViewerObject::updateAvatarMeshVisibility(const LLUUID& id, const LLUUID& 
     LLVOAvatar* avatar = getAvatar();
     if (avatar)
     {
-        avatar->updateMeshVisibility();
+        if (avatar->getRezzedStatus() == 3)
+            avatar->updateMeshVisibility();
     }
 }
 

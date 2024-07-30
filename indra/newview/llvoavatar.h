@@ -286,6 +286,8 @@ public:
     void            idleUpdateMisc(bool detailed_update);
     virtual void    idleUpdateAppearanceAnimation();
     void            idleUpdateLipSync(bool voice_enabled);
+    S32             countMeshAttachments(bool loaded);
+    S32             countChildMeshAttachments(LLViewerObject *child, bool loaded);
     void            idleUpdateLoadingEffect();
     void            idleUpdateWindEffect();
     void            idleUpdateNameTag(const LLVector3& root_pos_last);
