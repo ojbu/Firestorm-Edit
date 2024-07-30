@@ -946,7 +946,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         F32  cos_angle_to_view_dir;
                         bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius); // Do this before getPixelArea so it's updated.
                         vsize = face->getPixelArea();
-                        // TommyTheTerrible - User's avatar always rendered at discard 0.
+
                         if (face->isState(LLFace::PARTICLE))
                         {
                             vsize = 256 * 256;
@@ -965,9 +965,11 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
                             vsize /= min_scale;
                         }
-                        //F32 distance_ratio = distance / draw_distance;
-                        // Reduce vsize using DiscardBias with influence from face's distance in relation to set clipping distance (Draw Distance).
-                        vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias), 4), 1);
+                        else
+                        {
+                            vsize = (2048 * 2048);
+                        }
+                        vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias), 4), 1);                        
                         // <TS:3T> Avoid changing vsize to reduce decoding unnecessarily.
                         //if (!in_frustum || !face->getDrawable()->isVisible() ||
                         //    face->getImportanceToCamera() < bias_unimportant_threshold)
