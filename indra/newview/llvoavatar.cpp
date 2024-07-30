@@ -2323,6 +2323,7 @@ void LLVOAvatar::resetSkeleton(bool reset_animations)
         applyDefaultParams();
         setCompositeUpdatesEnabled( TRUE );
         updateMeshTextures();
+        if (getRezzedStatus() == 3)
         updateMeshVisibility();
     }
     updateVisualParams();
@@ -3291,11 +3292,55 @@ void LLVOAvatar::idleUpdateLipSync(bool voice_enabled)
         dirtyMesh();
     }
 }
+S32 LLVOAvatar::countChildMeshAttachments(LLViewerObject *object, bool loaded)
+{
+    S32 countedMeshAttachments = 0;
+    if (loaded) {
+        countedMeshAttachments += object->getVolume()->isMeshAssetLoaded();
+    }
+    else
+    {
+        countedMeshAttachments += object->isMesh();
+    }
+    if (object->numChildren() > 0)
+    {
+        LLViewerObject::const_child_list_t &child_list = object->getChildren();
+        for (LLViewerObject::child_list_t::const_iterator iter = child_list.begin(); iter != child_list.end(); ++iter)
+        {
+            LLViewerObject *child = *iter;
+            countedMeshAttachments += countChildMeshAttachments(child, loaded);
+        }
+    }
+    return countedMeshAttachments;
+}
+S32 LLVOAvatar::countMeshAttachments(bool loaded) {
+    
+    S32 totalMeshAttachments = 0;
+    for (attachment_map_t::iterator iter = mAttachmentPoints.begin(); iter != mAttachmentPoints.end(); ++iter)
+    {
+        LLViewerJointAttachment *attachment = iter->second;
+        if (attachment && attachment->getValid())
+        {
+            for (LLViewerJointAttachment::attachedobjs_vec_t::iterator attachment_iter = attachment->mAttachedObjects.begin();
+                 attachment_iter != attachment->mAttachedObjects.end();
+                 ++attachment_iter)
+            {
+                // Don't we need to look at children of attached_object as well?
+                LLViewerObject *attached_object = attachment_iter->get();
+                if (attached_object)
+                {
+                    totalMeshAttachments += countChildMeshAttachments(attached_object, loaded);
+                }
+            }
+        }
+    }
+    return totalMeshAttachments;
+}
 
 void LLVOAvatar::idleUpdateLoadingEffect()
 {
     // update visibility when avatar is partially loaded
-    if (updateIsFullyLoaded()) // changed?
+    if (!isFullyLoaded() && updateIsFullyLoaded())  // <TS:3T> Check FullyLoaded first to avoid calculating more than necessary
     {
         if (isFullyLoaded())
         {
@@ -8246,6 +8291,7 @@ const LLViewerJointAttachment *LLVOAvatar::attachObject(LLViewerObject *viewer_o
         }
     }
 
+    if (getRezzedStatus() == 3)
     updateMeshVisibility();
 
     return attachment;
@@ -8555,6 +8601,7 @@ BOOL LLVOAvatar::detachObject(LLViewerObject *viewer_object)
                 }
             }
 
+            if (getRezzedStatus() == 3)
             updateMeshVisibility();
 
             LL_DEBUGS() << "Detaching object " << viewer_object->mID << " from " << attachment->getName() << LL_ENDL;
@@ -9174,7 +9221,8 @@ BOOL LLVOAvatar::updateIsFullyLoaded()
                    // itself and update mLoadedCallbackTextures (or fail and clean the list),
                    // avatars are more time-sensitive than textures and can't wait that long.
                    || (mLoadedCallbackTextures < mCallbackTextureList.size() && mLastTexCallbackAddedTime.getElapsedTimeF32() < MAX_TEXTURE_WAIT_TIME_SEC)
-                   || !mPendingAttachment.empty()
+                   //|| !mPendingAttachment.empty() //<TS:3T> Not used anymore?
+                   || countMeshAttachments(false) == 0
                    || (rez_status < 3 && !isFullyBaked())
                 //    || hasPendingAttachedMeshes() // <FS:Beq/>
                   );
@@ -9219,12 +9267,15 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
     // settle down (models to snap into place, textures to get first packets).
     // And if viewer isn't aware of some parts yet, this gives them a chance
     // to arrive.
-    const F32 LOADED_DELAY = 1.f;
+    const F32 LOADED_DELAY = FIRST_APPEARANCE_CLOUD_MAX_DELAY;
 
     if (loading)
     {
         mFullyLoadedTimer.reset();
     }
+    S32 total_attachments = countMeshAttachments(false); // false sent to receive total attachments
+    S32 loaded_attachments = countMeshAttachments(true); // true sent to receive number of loaded attachments
+    bool attachments_ready  = (mFullyLoadedInitialized && total_attachments > 0 && loaded_attachments == total_attachments);
 
     if (mFirstFullyVisible)
     {
@@ -9244,11 +9295,11 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
                     mFirstUseDelaySeconds *= 1.25;
                 }
         }
-        mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > mFirstUseDelaySeconds);
+        mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > mFirstUseDelaySeconds || attachments_ready);
     }
     else
     {
-        mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > LOADED_DELAY);
+        mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > LOADED_DELAY || attachments_ready);
     }
 
     if (!mPreviousFullyLoaded && !loading && mFullyLoaded)
@@ -9282,6 +9333,9 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
         mNeedsImpostorUpdate = TRUE;
         mLastImpostorUpdateReason = 6;
     }
+    if (fully_loaded_changed)
+        updateMeshVisibility();
+
     return changed;
 }
 
@@ -10699,6 +10753,7 @@ void LLVOAvatar::applyParsedAppearanceMessage(LLAppearanceMessageContents& conte
     }
 
     updateMeshTextures();
+    if (getRezzedStatus() == 3)
     updateMeshVisibility();
 }
 
@@ -12400,6 +12455,7 @@ void LLVOAvatar::updateOverallAppearance()
             mNeedsImpostorUpdate = TRUE;
             mLastImpostorUpdateReason = 8;
         }
+        if (getRezzedStatus() == 3)
         updateMeshVisibility();
     }
 
