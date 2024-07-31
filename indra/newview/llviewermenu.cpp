@@ -3157,10 +3157,25 @@ void derenderObject(bool permanent)
             std::string region_name;
             LLAssetType::EType asset_type;
 
-            if (objp->isAvatar())
+            if (objp->isAvatar() || objp->isAttachment()) //<TS:3T> Derender avatar instead of attachment to avoid creepy people disrobing others.
             {
-                LLNameValue* firstname = objp->getNVPair("FirstName");
-                LLNameValue* lastname = objp->getNVPair("LastName");
+                LLNameValue *firstname = objp->getNVPair("FirstName");
+                LLNameValue *lastname = objp->getNVPair("LastName");
+                if (objp->isAttachment()) // <TS:3T> Find the avatar parent to the attachment and use it to derender instead.
+                {
+                    LLViewerObject *parent = (LLViewerObject *) objp->getParent();
+                    while (parent && parent->isAttachment())
+                    {
+                        parent = (LLViewerObject *) parent->getParent();
+                    }
+                    if (parent && parent->isAvatar())
+                    {
+                        id = parent->getID();
+                        firstname = parent->getNVPair("FirstName");
+                        lastname = parent->getNVPair("LastName");
+                        objp = parent;
+                    }
+                }
                 entry_name = llformat("%s %s", firstname->getString(), lastname->getString());
                 asset_type = LLAssetType::AT_PERSON;
             }
