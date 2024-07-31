@@ -956,36 +956,27 @@ BOOL LLVOAvatar::isFullyBaked()
 
 BOOL LLVOAvatar::isFullyTextured() const
 {
-    for (S32 i = 0; i < mMeshLOD.size(); i++)
-    {
-        LLAvatarJoint* joint = mMeshLOD[i];
-        if (i==MESH_ID_SKIRT && !isWearingWearableType(LLWearableType::WT_SKIRT))
-        {
-            continue; // don't care about skirt textures if we're not wearing one.
-        }
-        if (!joint)
-        {
-            continue; // nonexistent LOD OK.
-        }
-        avatar_joint_mesh_list_t::iterator meshIter = joint->mMeshParts.begin();
-        if (meshIter != joint->mMeshParts.end())
-        {
-            LLAvatarJointMesh *mesh = (*meshIter);
-            if (!mesh)
+    for (auto const &attachment_point : mAttachmentPoints)
+    {        
+        LLViewerJointAttachment *attachment = attachment_point.second;
+        if (attachment && attachment->getValid())
             {
-                continue; // nonexistent mesh OK
+            for (auto const &attached_object : attachment->mAttachedObjects)
+                {
+                    if (attached_object)
+                    {
+                        for (S32 i = 0; i < attached_object->getNumTEs(); i++)
+                        {
+                            LLViewerFetchedTexture *image =
+                                gTextureList.findImage(LLTextureKey(attached_object->getTE(i)->getID(), TEX_LIST_STANDARD));
+                            if (image && !image->isMissingAsset() && !image->hasGLTexture())
+                            {
+                                return FALSE;
+                            }
+                        }
+                    }
+                }
             }
-            if (mesh->hasGLTexture())
-            {
-                continue; // Mesh exists and has a baked texture.
-            }
-            if (mesh->hasComposite())
-            {
-                continue; // Mesh exists and has a composite texture.
-            }
-            // Fail
-            return FALSE;
-        }
     }
     return TRUE;
 }
@@ -9275,7 +9266,8 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
     }
     S32 total_attachments = countMeshAttachments(false); // false sent to receive total attachments
     S32 loaded_attachments = countMeshAttachments(true); // true sent to receive number of loaded attachments
-    bool attachments_ready  = (mFullyLoadedInitialized && total_attachments > 0 && loaded_attachments == total_attachments);
+    bool attachments_ready =
+        (mFullyLoadedInitialized && total_attachments > 0 && loaded_attachments == total_attachments && isFullyTextured());
 
     if (mFirstFullyVisible)
     {
