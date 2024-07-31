@@ -373,7 +373,7 @@ struct LLWindowWin32::LLWindowWin32Thread : public LL::ThreadPool
     // call periodically to update available VRAM
     void updateVRAMUsage();
 
-    U32 getAvailableVRAMMegabytes()
+    S32 getAvailableVRAMMegabytes()
     {
         return mAvailableVRAM;
     }
@@ -426,7 +426,7 @@ struct LLWindowWin32::LLWindowWin32Thread : public LL::ThreadPool
     // until after some graphics setup. See SL-20177. -Cosmic,2023-09-18
     bool mGLReady = false;
     // best guess at available video memory in MB
-    std::atomic<U32> mAvailableVRAM;
+    std::atomic<S32> mAvailableVRAM;
 
     U32 mMaxVRAM = 0; // maximum amount of vram to allow in the "budget", or 0 for no maximum (see updateVRAMUsage)
 
@@ -4655,7 +4655,7 @@ std::vector<std::string> LLWindowWin32::getDynamicFallbackFontList()
     return std::vector<std::string>();
 }
 
-U32 LLWindowWin32::getAvailableVRAMMegabytes()
+S32 LLWindowWin32::getAvailableVRAMMegabytes()
 {
     return mWindowThread ? mWindowThread->getAvailableVRAMMegabytes() : 0;
 }
