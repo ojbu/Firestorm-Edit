@@ -969,7 +969,8 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         {
                             vsize = (2048 * 2048);
                         }
-                        vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias), 4), 1);                        
+                        if(importance < 0.90f)
+                            vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias), 4), 1);                        
                         // <TS:3T> Avoid changing vsize to reduce decoding unnecessarily.
                         //if (!in_frustum || !face->getDrawable()->isVisible() ||
                         //    face->getImportanceToCamera() < bias_unimportant_threshold)
