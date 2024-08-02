@@ -269,6 +269,8 @@ public:
     LLVOAvatar* mAvatar = nullptr;
     LLMeshSkinInfo* mSkinInfo = nullptr;
 
+    bool        mFirstTextureLoad;
+
     // return mSkinInfo->mHash or 0 if mSkinInfo is null
     U64 getSkinHash();
 

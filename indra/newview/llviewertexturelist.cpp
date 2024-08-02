@@ -979,8 +979,10 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         //}
                         // </TS:3T>
 
-                        if (face->mAvatar && !imagep->isMissingAsset() && imagep->getDiscardLevel() < 0)
-                            face->mAvatar->notifyAttachmentMeshLoaded(); // <TS:3T> Resets mFullyLoadedTimer for the avatar.
+                        if (face->mFirstTextureLoad && face->mAvatar && !imagep->isMissingAsset() && imagep->getDiscardLevel() < 0)
+                            face->mAvatar->notifyAttachmentMeshLoaded(); // <TS:3T/> Resets mFullyLoadedTimer for the avatar.
+                        if (face->mFirstTextureLoad && imagep->getDiscardLevel() > 0)
+                            face->mFirstTextureLoad = false;
 
                         if (i == 0)
                         {
