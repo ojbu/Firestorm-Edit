@@ -9319,12 +9319,12 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
                 }
         }
         mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > mFirstUseDelaySeconds ||
-            (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > 10.f));
+            (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > 9.f));
     }
     else
     {
         mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > LOADED_DELAY ||
-            (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > 10.f));
+            (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > 9.f));
     }
 
     if (!mPreviousFullyLoaded && !loading && mFullyLoaded)
