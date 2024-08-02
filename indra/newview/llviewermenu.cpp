@@ -3441,8 +3441,11 @@ void inspect_avatar(LLVOAvatar *avatar) {
 
     LLFloaterReg::showInstance("area_search");
     FSAreaSearch* area_search = LLFloaterReg::findTypedInstance<FSAreaSearch>("area_search");
-    if (area_search)
+    if (area_search && avatar)
     {
+        LLAvatarName av_name;
+        LLAvatarNameCache::get(avatar->mID, &av_name);
+        area_search->clear();
         LLCheckBoxCtrl *exclude_attachment = area_search->getChild<LLCheckBoxCtrl>("exclude_attachment");
         exclude_attachment->set(FALSE);
         area_search->setExcludeAttachment(FALSE);
@@ -3453,8 +3456,7 @@ void inspect_avatar(LLVOAvatar *avatar) {
         filter_attachment->setEnabled(TRUE);
         filter_attachment->set(TRUE);
         area_search->setFilterAttachment(TRUE);
-        std::string avatar_search_name = avatar->getFullname();
-        std::replace(avatar_search_name.begin(), avatar_search_name.end(), ' ', '.');
+        std::string avatar_search_name = av_name.getCompleteName();
         area_search->setFindOwnerText(avatar_search_name);
         area_search->onButtonClickedSearch();
         area_search->checkRegion();
