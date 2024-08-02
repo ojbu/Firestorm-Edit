@@ -1981,7 +1981,7 @@ bool LLViewerFetchedTexture::updateFetch()
         decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
     }
     if (forParticle() || forHUD())
-        decode_priority = (2048 * 2048); // Let's make sure particles, HUDs and user's avatar (assigned as HUD) load faster.
+        decode_priority = LLViewerFetchedTexture::sMaxVirtualSize;  // Let's make sure particles, HUDs and user's avatar (assigned as HUD) load faster.
     decode_priority = llmax(decode_priority, (256 * 256));
     // </TS:3T>
 
