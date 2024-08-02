@@ -148,6 +148,8 @@ void LLFace::init(LLDrawable* drawablep, LLViewerObject* objp)
     mGeomIndex      = 0;
     mIndicesCount   = 0;
 
+    mFirstTextureLoad = true;
+
     //special value to indicate uninitialized position
     mIndicesIndex   = 0xFFFFFFFF;
 
