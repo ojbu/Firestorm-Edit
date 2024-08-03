@@ -3384,7 +3384,7 @@ S32 LLVOAvatar::countMeshAttachments(bool loaded) {
 void LLVOAvatar::idleUpdateLoadingEffect()
 {
     // update visibility when avatar is partially loaded
-    if (!isFullyLoaded() && updateIsFullyLoaded())  // <TS:3T> Check FullyLoaded first to avoid calculating more than necessary
+    if (!mFullyLoaded && updateIsFullyLoaded())  // <TS:3T> Check FullyLoaded first to avoid calculating more than necessary
     {
         if (isFullyLoaded())
         {
