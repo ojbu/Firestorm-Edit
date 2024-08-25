@@ -9276,8 +9276,8 @@ BOOL LLVOAvatar::updateIsFullyLoaded()
                    // don't wait forever, it might fail. Even if it will eventually load by
                    // itself and update mLoadedCallbackTextures (or fail and clean the list),
                    // avatars are more time-sensitive than textures and can't wait that long.
-                   || (mLoadedCallbackTextures < mCallbackTextureList.size() && mLastTexCallbackAddedTime.getElapsedTimeF32() < MAX_TEXTURE_WAIT_TIME_SEC)
-                   //|| !mPendingAttachment.empty() //<TS:3T> Not used anymore?
+                   || (mLoadedCallbackTextures < mCallbackTextureList.size() && mLastTexCallbackAddedTime.getElapsedTimeF32() < MAX_TEXTURE_WAIT_TIME_SEC) //<TS:3T> Not used anymore?
+                   || !mPendingAttachment.empty() //<TS:3T> Not used anymore?
                    || countMeshAttachments(false) == 0
                    || (rez_status < 3 && !isFullyBaked())
                 //    || hasPendingAttachedMeshes() // <FS:Beq/>
@@ -9349,7 +9349,7 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
                 {
                     // Impostors are less of a priority,
                     // let them stay cloud longer
-                    mFirstUseDelaySeconds *= 1.25;
+                    //mFirstUseDelaySeconds *= 1.25;
                 }
         }
         mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > mFirstUseDelaySeconds ||
