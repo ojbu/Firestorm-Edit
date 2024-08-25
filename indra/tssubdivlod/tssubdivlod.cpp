@@ -1,31 +1,60 @@
+/**
+ * @file tssubdivlod.cpp
+ * @brief This is an implementation of a LOD management system using a novel subdivision binary tree.
+ *
+ * $LicenseInfo:firstyear=2024&license=lgpl$
+ * TommyTheTerrible
+ * Copyright (C) 2024, TommyTheTerrible
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation;
+ * version 2.1 of the License only.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * TommyTheTerrible: tommy@tommytheterrible.com, https://www.tommytheterrible.com/ https://github.com/TommyTheTerrible/
+ * $/LicenseInfo$
+ */
 #include "tssubdivlod.h"
+#define CBT_IMPLEMENTATION
+#define CBT_STATIC
+#include "cbt.h"
+#define LEB_IMPLEMENTATION
+#define LEB_STATIC
+#include "leb.h"
 
 TSSubDivisonLOD::TSSubDivisonLOD()
 {
-    int64_t DEFAULT_DEPTH = 11;
-    grid_subdiv_map mGridTree;
-
+    
 }
 
-std::string TSSubDivisonLOD::getID(int64_t gridX, int64_t gridY, int64_t simZ)
+std::string TSSubDivisonLOD::getID(int64_t region_handle, int64_t simZ)
 {
+    int32_t gridX = ((int32_t) (region_handle >> 32));
+    int32_t gridY = ((int32_t) (region_handle & 0xFFFFFFFF));
     return std::to_string(gridX) + "-" + std::to_string(gridY) + "-" + std::to_string(simZ);
 };
 
-void TSSubDivisonLOD::addSim(int64_t gridX, int64_t gridY, int64_t simZ)
+void TSSubDivisonLOD::checkSim(std::string id, const int64_t region_handle)
 {
-    cbt_Tree *cbt = cbt_Create(DEFAULT_DEPTH);
-    std::string id  = getID(gridX, gridY, simZ);
-    mGridTree[id]   = cbt;
+    if (!mGridTree[id])
+        mGridTree[id] = region_handle;
 };
 
-uint64_t TSSubDivisonLOD::getSimTree(int64_t gridX, int64_t gridY, int64_t simZ)
+uint64_t TSSubDivisonLOD::getSimNode(const int64_t region_handle, const float vector[3], const int depth, const float extents)
 {
-    std::string id = getID(gridX, gridY, simZ);
-    if (!mGridTree[id])
-        addSim(gridX, gridY, simZ);
-    cbt_Tree *tree = mGridTree[id];
-    return (uint64_t) tree;
+    int simZ = (int)floor(vector[2] / 1024);
+    std::string id = getID(region_handle, simZ);
+    //sTSSubDivisonLOD.checkSim(id, region_handle);
+    return (uint64_t) positionToNode(vector[0], vector[1], depth, extents);
 };
 
 float Wedge(const float *a, const float *b)
@@ -52,7 +81,7 @@ bool isInsideXY(const float faceVertices[][3], const float x, const float y)
     return (w1 >= 0.0f) && (w2 >= 0.0f) && (w3 >= 0.0f);
 }
 
-uint64_t TSSubDivisonLOD::positionToNode(const float x, const float y, int64_t depth, float extents)
+uint64_t TSSubDivisonLOD::positionToNode(const float x, const float y, const int depth, const float extents)
 {
     uint64_t minNodeID = (1ULL << depth);
     uint64_t maxNodeID = (2ULL << depth);
