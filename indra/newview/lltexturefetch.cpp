@@ -1224,10 +1224,11 @@ bool LLTextureFetchWorker::doWork(S32 param)
         mCacheWriteHandle = LLTextureCache::nullHandle();
         setState(LOAD_FROM_TEXTURE_CACHE);
         mInCache = FALSE;
-        mDesiredSize = llmax(mDesiredSize, TEXTURE_CACHE_ENTRY_SIZE); // min desired size is TEXTURE_CACHE_ENTRY_SIZE
+        //mDesiredSize = llmax(mDesiredSize, TEXTURE_CACHE_ENTRY_SIZE); // min desired size is TEXTURE_CACHE_ENTRY_SIZE
         LL_DEBUGS(LOG_TXT) << mID << ": Priority: " << llformat("%8.0f",mImagePriority)
                            << " Desired Discard: " << mDesiredDiscard << " Desired Size: " << mDesiredSize << LL_ENDL;
-
+        if (mDesiredSize == 0)
+            setState(DONE);
         // fall through
     }
 
@@ -2785,7 +2786,7 @@ S32 LLTextureFetch::createRequest(FTType f_type, const std::string& url, const L
         // amount of data at the lowest resolution (highest discard level) possible.
         //desired_size = TEXTURE_CACHE_ENTRY_SIZE;        
         desired_discard = MAX_DISCARD_LEVEL;
-        desired_size = LLImageJ2C::calcDataSizeJ2C(1, 1, 4, desired_discard);
+        desired_size = LLImageJ2C::calcDataSizeJ2C(0, 0, 4, desired_discard);
     }
 
 

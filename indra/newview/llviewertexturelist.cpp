@@ -104,6 +104,7 @@ void LLViewerTextureList::init()
 {
     mInitialized = TRUE ;
     sNumImages = 0;
+    mListMemoryIncomingBytes = 0;
     doPreloadImages();
 }
 
@@ -914,8 +915,6 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     {
         for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; ++i)
         {
-            std::vector<class LLFetchedGLTFMaterial*> materialList;
-            U32 materialCount = 0;
             for (U32 fi = 0; fi < imagep->getNumFaces(i); ++fi)
             {
                 F32 vsize = -1;
@@ -929,14 +928,16 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                     // <TS:3T> - Use avatar distance instead of face to avoid animations possibly causing issues.
                     F32 distance = 0;
                     LLPointer<LLDrawable> drawable;
-                    if (face->mAvatar && face->mAvatar->mDrawable) {
+                    if (face->mAvatar && face->mAvatar->mDrawable)
+                    {
                         drawable = face->mAvatar->mDrawable;
                     }
-                    else {
+                    else
+                    {
                         drawable = face->getDrawable();
                     }
                     // mDistanceWRTCamera does not seem to be updated reliably, so if it reports something unusual than we request an update.
-                    if (drawable->mDistanceWRTCamera > 1024) // Max draw distance is 1028m.
+                    if (drawable->mDistanceWRTCamera > 1024) // Max draw distance is 1024m.
                         drawable->updateDistance(*LLViewerCamera::getInstance(), true);
                     distance = drawable->mDistanceWRTCamera;
                     if (distance <= draw_distance || (face->getDrawable() && face->getDrawable()->isVisible())) // <TS:3T> Only use faces within draw distance or visible.
@@ -945,8 +946,9 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         F32  radius;
                         F32  cos_angle_to_view_dir;
                         bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius); // Do this before getPixelArea so it's updated.
-                        vsize = face->getPixelArea();
+                        vsize = llmax(face->getPixelArea(), (16 * 16));
 
+                        importance = face->getImportanceToCamera();
                         if (face->isState(LLFace::PARTICLE))
                         {
                             vsize = 256 * 256;
@@ -954,48 +956,34 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                             importance = (F32)in_frustum;
                             continue;
                         }
-                        importance = face->getImportanceToCamera();
 
-                        if (!(face->isState(LLFace::TEXTURE_ANIM)))
-                        {
-                            // scale desired texture resolution higher or lower depending on texture scale
-                            const LLTextureEntry* te = face->getTextureEntry();
-                            F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
-                            min_scale     = llmax(min_scale * min_scale, 0.1f);
-
-                            vsize /= min_scale;
-                        }
-                        else
+                        if (face->isState(LLFace::TEXTURE_ANIM))
                         {
                             vsize = (2048 * 2048);
                         }
-                        if(importance < (0.75f + (LLViewerTexture::sDesiredDiscardBias / 20)))
-                            vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias), 4), 1);                        
+                        else
+                        {
+                            // scale desired texture resolution higher or lower depending on texture scale
+                            F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
+                            min_scale     = llmax(min_scale * min_scale, 0.1f);
+                            vsize /= min_scale;
+                        }
+
+                        if ((importance < 0.90f && LLViewerTexture::sDesiredDiscardBias > 3) ||
+                            LLViewerTexture::sDesiredDiscardBias > 6)
+                            vsize /= llmax(pow(LLViewerTexture::sDesiredDiscardBias, 4), 1);
                         // <TS:3T> Avoid changing vsize to reduce decoding unnecessarily.
-                        //if (!in_frustum || !face->getDrawable()->isVisible() ||
-                        //    face->getImportanceToCamera() < bias_unimportant_threshold)
-                        //{  // further reduce by discard bias when off screen or occluded
-                        //    vsize /= 2;
-                        //}
+                        if (!in_frustum && LLViewerTexture::sDesiredDiscardBias > 5)
+                        {  // further reduce by discard bias when off screen or occluded
+                            vsize /= 4.0f;
+                        }
                         // </TS:3T>
 
                         if (face->mFirstTextureLoad && face->mAvatar && !imagep->isMissingAsset() && imagep->getDiscardLevel() < 0)
-                            face->mAvatar->notifyAttachmentMeshLoaded(); // <TS:3T/> Resets mFullyLoadedTimer for the avatar.
-                        if (face->mFirstTextureLoad && imagep->getDiscardLevel() > 0)
+                            face->mAvatar->notifyAttachmentMeshLoaded();  // <TS:3T/> Resets mFullyLoadedTimer for the avatar.
+                        if (face->mFirstTextureLoad && imagep->getDiscardLevel() >= 0 || imagep->getFTType() == FTT_SERVER_BAKE)  // <TS:3T/> Server bakes will never be set as missing, so we need to adjust for some perhaps retrying forever!
                             face->mFirstTextureLoad = false;
 
-                        if (i == 0)
-                        {
-                            // TommyTheTerrible - Grab Material for processing later.
-                            LLFetchedGLTFMaterial *mat = te ? (LLFetchedGLTFMaterial *) te->getGLTFRenderMaterial() : nullptr;
-                            llassert(mat == nullptr || dynamic_cast<LLFetchedGLTFMaterial *>(te->getGLTFRenderMaterial()) != nullptr);
-                            if (mat)
-                            {
-                                materialList.resize(2 * materialCount + 1);
-                                materialList[materialCount] = mat;
-                                materialCount++;
-                            }
-                        }
                     }
                     if (face->isState(LLFace::HUD_RENDER) || (face->mAvatar && face->mAvatar->isSelf())) // <TS:3T> Huds and user's avatar are very important.
                     {
@@ -1004,33 +992,18 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         imagep->setForHUD();
                     }
                 }
-
                 assignSize = llmax(vsize, assignSize);
-                assignImportance = llmax(importance, assignImportance);
+                assignImportance += importance;
             }
-            if (assignSize > 0)
+            if (assignSize >= 0)
             {
-                if (materialCount > 0)
-                {
-                    // TommyTheTerrible - Process found materials.
-                    for (U32 fi = 0; fi < materialCount; ++fi)
-                    {
-                        if (materialList[fi])
-                        {
-                            touch_texture(materialList[fi]->mBaseColorTexture, assignSize);
-                            touch_texture(materialList[fi]->mNormalTexture, assignSize);
-                            touch_texture(materialList[fi]->mMetallicRoughnessTexture, assignSize);
-                            touch_texture(materialList[fi]->mEmissiveTexture, assignSize);
-                        }
-                    }
-                }
-                else {
-                    touch_texture(imagep, assignSize); // <TS:3T/> Altered touch_texture function to setKnownDrawSize if full size information available.
-                }                
+                touch_texture(imagep, assignSize);
             }
         }
     }
 
+    if (assignImportance > 0)
+        imagep->setMaxFaceImportance(assignImportance);
     //imagep->setDebugText(llformat("%.3f - %d", sqrtf(imagep->getMaxVirtualSize()), imagep->getBoostLevel()));
 
     F32 lazy_flush_timeout = 30.f;   // Delete after n seconds, or 0 to not delete until VRAM threshold reached.
@@ -1045,9 +1018,9 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     // Flush formatted images using a lazy flush
     //
     // Reset texture state if found on a face or not.
-    imagep->setInactive(onFace);
+    imagep->setInactive(assignSize > 0);
     S32 num_refs = imagep->getNumRefs();
-    if (num_refs == min_refs)
+    if (num_refs <= min_refs)
     {
         if (imagep->getLastReferencedTimer()->getElapsedTimeF32() > lazy_flush_timeout)
         {

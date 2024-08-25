@@ -581,15 +581,20 @@ void LLViewerTexture::updateClass()
 
     LLViewerMediaTexture::updateClass();
 
+    //if (LLAppViewer::instance()->getTextureFetch()->getNumRequests() == 0)
+        //gTextureList.mListMemoryIncomingBytes = 0;
+
     static LLCachedControl<U32> max_vram_budget(gSavedSettings, "RenderMaxVRAMBudget", 0);
 
     F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 512.0;
     F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 512.0;
     F64 render_bytes_alloc = LLRenderTarget::sBytesAllocated / 1024.0 / 512.0;
+    F32 texturelist_bytes_coming = gTextureList.mListMemoryIncomingBytes / 1024.0 / 512.0;
 
     // get an estimate of how much video memory we're using
     // NOTE: our metrics miss about half the vram we use, so this biases high but turns out to typically be within 5% of the real number
-    F32 used = (F32) ll_round(texture_bytes_alloc + vertex_bytes_alloc + render_bytes_alloc);
+    F32 used = (F32) ll_round(texture_bytes_alloc + vertex_bytes_alloc + render_bytes_alloc + texturelist_bytes_coming);
+    //F32 used = (F32) ll_round(texture_bytes_alloc + vertex_bytes_alloc + render_bytes_alloc);
 
     F32 budget = max_vram_budget == 0 ? gGLManager.mVRAM : max_vram_budget;
 
@@ -661,15 +666,15 @@ void LLViewerTexture::init(bool firstinit)
     mParcelMedia = NULL;
 
     memset(&mNumVolumes, 0, sizeof(U32)* LLRender::NUM_VOLUME_TEXTURE_CHANNELS);
-    mFaceList[LLRender::DIFFUSE_MAP].clear();
-    mFaceList[LLRender::NORMAL_MAP].clear();
-    mFaceList[LLRender::SPECULAR_MAP].clear();
-    mNumFaces[LLRender::DIFFUSE_MAP] =
-    mNumFaces[LLRender::NORMAL_MAP] =
-    mNumFaces[LLRender::SPECULAR_MAP] = 0;
 
     mVolumeList[LLRender::LIGHT_TEX].clear();
     mVolumeList[LLRender::SCULPT_TEX].clear();
+
+    for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; i++)
+    {
+        mNumFaces[i] = 0;
+        mFaceList[i].clear();
+    }
 
     mMainQueue  = LL::WorkQueue::getInstance("mainloop");
     mImageQueue = LL::WorkQueue::getInstance("LLImageGL");
@@ -688,9 +693,11 @@ void LLViewerTexture::cleanup()
         LLAppViewer::getTextureFetch()->updateRequestPriority(mID, 0.f);
     }
 
-    mFaceList[LLRender::DIFFUSE_MAP].clear();
-    mFaceList[LLRender::NORMAL_MAP].clear();
-    mFaceList[LLRender::SPECULAR_MAP].clear();
+    for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; i++)
+    {
+        mNumFaces[i] = 0;
+        mFaceList[i].clear();
+    }
     mVolumeList[LLRender::LIGHT_TEX].clear();
     mVolumeList[LLRender::SCULPT_TEX].clear();
 }
@@ -1151,6 +1158,7 @@ void LLViewerFetchedTexture::init(bool firstinit)
     mUnremovable = FALSE;
 
     mFTType = FTT_UNKNOWN;
+    mIncomingChangeBits = 0;
 }
 
 LLViewerFetchedTexture::~LLViewerFetchedTexture()
@@ -1511,35 +1519,35 @@ BOOL LLViewerFetchedTexture::preCreateTexture(S32 usename/*= 0*/)
     //          << mID.getString() << LL_ENDL;
 
     // <FS:Techwolf Lupindo> texture comment metadata reader
-    if (!mRawImage->mComment.empty())
-    {
-        std::string comment = mRawImage->mComment;
-        mComment["comment"] = comment;
-        std::size_t position = 0;
-        std::size_t length = comment.length();
-        while (position < length)
-        {
-            std::size_t equals_position = comment.find("=", position);
-            if (equals_position != std::string::npos)
-            {
-                std::string type = comment.substr(position, equals_position - position);
-                position = comment.find("&", position);
-                if (position != std::string::npos)
-                {
-                    mComment[type] = comment.substr(equals_position + 1, position - (equals_position + 1));
-                    position++;
-                }
-                else
-                {
-                    mComment[type] = comment.substr(equals_position + 1, length - (equals_position + 1));
-                }
-            }
-            else
-            {
-                position = equals_position;
-            }
-        }
-    }
+    //if (!mRawImage->mComment.empty())
+    //{
+    //    std::string comment = mRawImage->mComment;
+    //    mComment["comment"] = comment;
+    //    std::size_t position = 0;
+    //    std::size_t length = comment.length();
+    //    while (position < length)
+    //    {
+    //        std::size_t equals_position = comment.find("=", position);
+    //        if (equals_position != std::string::npos)
+    //        {
+    //            std::string type = comment.substr(position, equals_position - position);
+    //            position = comment.find("&", position);
+    //            if (position != std::string::npos)
+    //            {
+    //                mComment[type] = comment.substr(equals_position + 1, position - (equals_position + 1));
+    //                position++;
+    //            }
+    //            else
+    //            {
+    //                mComment[type] = comment.substr(equals_position + 1, length - (equals_position + 1));
+    //            }
+    //        }
+    //        else
+    //        {
+    //            position = equals_position;
+    //        }
+    //    }
+    //}
     // </FS:Techwolf Lupindo>
 
     BOOL res = TRUE;
@@ -1757,13 +1765,11 @@ void LLViewerFetchedTexture::setKnownDrawSize(S32 width, S32 height)
 
 void LLViewerFetchedTexture::setDebugText(const std::string& text)
 {
-    for (U32 ch = 0; ch < LLRender::NUM_TEXTURE_CHANNELS; ++ch)
+    for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; ++i)
     {
-        llassert(mNumFaces[ch] <= mFaceList[ch].size());
-
-        for (U32 i = 0; i < mNumFaces[ch]; i++)
+        for (S32 fi = 0; fi < getNumFaces(i); ++fi)
         {
-            LLFace* facep = mFaceList[ch][i];
+            LLFace *facep = (*(getFaceList(i)))[fi];
             if (facep)
             {
                 LLDrawable* drawable = facep->getDrawable();
@@ -1972,6 +1978,7 @@ bool LLViewerFetchedTexture::updateFetch()
     S32 current_discard = getCurrentDiscardLevelForFetching();
     S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
+    F32 high_priority   = LLViewerFetchedTexture::sMaxVirtualSize;  // LLViewerFetchedTexture::sMaxVirtualSize;   
     // <TS:3T> Adjust decode priority depending on various factors
     if (decode_priority > 0)
     {
@@ -1980,9 +1987,10 @@ bool LLViewerFetchedTexture::updateFetch()
         // Let's make textures with a lot of important faces a higher priority.
         decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
     }
+    // Let's make sure particles, new textures, HUDs and user's avatar (assigned as HUD) load faster.
     if (forParticle() || forHUD())
-        decode_priority = LLViewerFetchedTexture::sMaxVirtualSize;  // Let's make sure particles, HUDs and user's avatar (assigned as HUD) load faster.
-    decode_priority = llmax(decode_priority, (256 * 256));
+        decode_priority = high_priority;    
+    decode_priority = llmin(decode_priority, LLViewerFetchedTexture::sMaxVirtualSize);
     // </TS:3T>
 
     if (mIsFetching)
@@ -2007,6 +2015,11 @@ bool LLViewerFetchedTexture::updateFetch()
             mIsFetching = FALSE;
             mLastFetchState = -1;
             mLastPacketTimer.reset();
+            if (mIncomingChangeBits > 0)
+            {
+                gTextureList.mListMemoryIncomingBytes -= (S32)mIncomingChangeBits;
+                mIncomingChangeBits = 0;
+            }
         }
         else
         {
@@ -2160,11 +2173,27 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - create or missing");
         make_request = false;
     }
-    else if (current_discard >= 0 && current_discard <= mMinDiscardLevel)
+    else if ((getType() == LLViewerTexture::FETCHED_TEXTURE|| getFTType() > 0) &&
+        current_discard >= 0 && current_discard < desired_discard)
     {
-        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current < min");
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FETCHED_TEXTURE");
         make_request = false;
     }
+    else if (getFTType() > 0 || current_discard == 0)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
+        make_request = false;
+    }
+    //else if (current_discard >= 0 && current_discard <= mMinDiscardLevel)
+    //{
+    //    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current < min");
+    //    make_request = false;
+    //}
+    //else if (current_discard >= 0 && current_discard <= mMinDiscardLevel)
+    //{
+    //    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current < min");
+    //    make_request = false;
+    //}
     //else if(mCachedRawImage.notNull() // can be empty
     //        && mCachedRawImageReady
     //        && (current_discard < 0)) // <TS:3T> Only use cached image at first texture load.
@@ -2177,12 +2206,22 @@ bool LLViewerFetchedTexture::updateFetch()
     {
         if (mIsFetching)
         {
+            /*
             // already requested a higher resolution mip
             if (mRequestedDiscardLevel <= desired_discard)
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - requested < desired");
                 make_request = false;
             }
+            */
+
+            if (LLAppViewer::getTextureFetch() && decode_priority > 0)
+            {
+                LLAppViewer::getTextureFetch()->updateRequestPriority(mID, decode_priority);
+            }
+
+            make_request = false;
+
         }
         else
         {
@@ -2220,9 +2259,23 @@ bool LLViewerFetchedTexture::updateFetch()
         S32 fetch_request_discard = -1;
         fetch_request_discard = LLAppViewer::getTextureFetch()->createRequest(mFTType, mUrl, getID(), getTargetHost(), decode_priority,
                                                                               w, h, c, desired_discard, needsAux(), mCanUseHTTP);
-
+        if (true)
+        {
+            LL_WARNS() << "updateFetch MIP TEST " << mID << " " << (S32) getType() << " wXh " << w << " x " << h
+                       << " Current: " << current_discard << " Current Size: " << mGLTexturep->getWidth(current_discard) << " x "
+                       << mGLTexturep->getHeight(current_discard) << " previous: " << (S32) mRequestedDiscardLevel
+                       << " Desired: " << desired_discard << " mFaceList->size(): " << (S32) mFaceList->size()
+                       << " needsAux(): " << (S32)needsAux()
+                       << " fetch_request_discard: " << (S32) fetch_request_discard << " sDesiredDiscardBias: " << LLViewerTexture::sDesiredDiscardBias
+                       << LL_ENDL;
+        }
         if (fetch_request_discard >= 0)
         {
+            if (w * h * c > 0) {
+                mIncomingChangeBits = (getWidth(fetch_request_discard) * getHeight(fetch_request_discard) * getComponents());
+                gTextureList.mListMemoryIncomingBytes += (S32)mIncomingChangeBits;
+            }            
+
             LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - request created");
             mHasFetcher = TRUE;
             mIsFetching = TRUE;
@@ -2601,7 +2654,7 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
     // Determine the quality levels of textures that we can provide to callbacks
     // and whether we need to do decompression/readback to get it
     //
-    S32 current_raw_discard = MAX_DISCARD_LEVEL; // We can always do a readback to get a raw discard
+    //S32 current_raw_discard = MAX_DISCARD_LEVEL; // We can always do a readback to get a raw discard
     S32 best_raw_discard = gl_discard;  // Current GL quality level
     S32 current_aux_discard = MAX_DISCARD_LEVEL;
     S32 best_aux_discard = best_raw_discard;
@@ -2641,7 +2694,7 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
                 //
                 // Need raw and auxiliary channels
                 //
-                if (entryp->mLastUsedDiscard > current_aux_discard)
+                if (entryp->mLastUsedDiscard != current_aux_discard)
                 {
                     // We have useful data, run the callbacks
                     run_raw_callbacks = true;
@@ -2649,17 +2702,18 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
             }
             else
             {
-                if (entryp->mLastUsedDiscard > current_raw_discard)
+                if (entryp->mLastUsedDiscard != gl_discard)
                 {
                     // We have useful data, just run the callbacks
                     run_raw_callbacks = true;
                 }
-                else if (entryp->mLastUsedDiscard != best_raw_discard)  //<TS:3T> Stop expecting all new discards to be lower
-                {
-                    // We can readback data, and then run the callbacks
-                    need_readback = true;
-                    run_raw_callbacks = true;
-                }
+                //else
+                //if (entryp->mLastUsedDiscard != best_raw_discard)  //<TS:3T> Stop expecting all new discards to be lower
+                //{
+                //    // We can readback data, and then run the callbacks
+                //    need_readback = true;
+                //    run_raw_callbacks = true;
+                //}
             }
         }
         else
