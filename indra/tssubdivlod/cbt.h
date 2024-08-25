@@ -612,7 +612,7 @@ static void cbt__ClearBitfield(cbt_Tree *tree)
     int64_t bufferMaxID = cbt__HeapUint64Size(maxDepth);
 
 CBT_PARALLEL_FOR
-    for (int bufferID = bufferMinID; bufferID < bufferMaxID; ++bufferID) {
+    for (int bufferID = (int)bufferMinID; bufferID < bufferMaxID; ++bufferID) {
         tree->heap[bufferID] = 0;
     }
 CBT_BARRIER
