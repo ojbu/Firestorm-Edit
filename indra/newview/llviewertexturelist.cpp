@@ -934,12 +934,13 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                     }
                     else
                     {
-                        drawable = face->getDrawable();
+                        drawable = face->getDrawable()->getRoot();
                     }
                     // mDistanceWRTCamera does not seem to be updated reliably, so if it reports something unusual than we request an update.
-                    if (drawable->mDistanceWRTCamera > 1024) // Max draw distance is 1024m.
+                    //if (drawable->mDistanceWRTCamera > 1024) // Max draw distance is 1024m.
                         drawable->updateDistance(*LLViewerCamera::getInstance(), true);
                     distance = drawable->mDistanceWRTCamera;
+                    //if (distance <= draw_distance)  // <TS:3T> Only use faces within draw distance or visible.
                     if (distance <= draw_distance || (face->getDrawable() && face->getDrawable()->isVisible())) // <TS:3T> Only use faces within draw distance or visible.
                     {
                         const LLTextureEntry *te = face->getTextureEntry();
@@ -949,25 +950,11 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         vsize = llmax(face->getPixelArea(), (16 * 16));
 
                         importance = face->getImportanceToCamera();
-                        if (face->isState(LLFace::PARTICLE))
-                        {
-                            vsize = 256 * 256;
-                            imagep->setForParticle();
-                            importance = (F32)in_frustum;
-                            continue;
-                        }
-
-                        if (face->isState(LLFace::TEXTURE_ANIM))
-                        {
-                            vsize = (2048 * 2048);
-                        }
-                        else
-                        {
-                            // scale desired texture resolution higher or lower depending on texture scale
-                            F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
-                            min_scale     = llmax(min_scale * min_scale, 0.1f);
-                            vsize /= min_scale;
-                        }
+                     
+                        // scale desired texture resolution higher or lower depending on texture scale
+                        F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
+                        min_scale     = llmax(min_scale * min_scale, 0.1f);
+                        vsize /= min_scale;
 
                         if ((importance < 0.90f && LLViewerTexture::sDesiredDiscardBias > 3) ||
                             LLViewerTexture::sDesiredDiscardBias > 6)
@@ -984,13 +971,28 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         if (face->mFirstTextureLoad && imagep->getDiscardLevel() >= 0 || imagep->getFTType() == FTT_SERVER_BAKE)  // <TS:3T/> Server bakes will never be set as missing, so we need to adjust for some perhaps retrying forever!
                             face->mFirstTextureLoad = false;
 
+                        if (face->isState(LLFace::PARTICLE))
+                        {
+                            vsize = 256 * 256;
+                            imagep->setForParticle();
+                            importance = (F32) in_frustum;
+                        }
+
+                        if (face->isState(LLFace::TEXTURE_ANIM))
+                        {
+                            vsize      = (2048 * 2048);
+                            importance = (F32) in_frustum;
+                        }   
+                        vsize = llmax(vsize, 64);
                     }
+
                     if (face->isState(LLFace::HUD_RENDER) || (face->mAvatar && face->mAvatar->isSelf())) // <TS:3T> Huds and user's avatar are very important.
                     {
                         vsize = (1024 * 1024);
                         importance = 1.0f;
                         imagep->setForHUD();
                     }
+                    
                 }
                 assignSize = llmax(vsize, assignSize);
                 assignImportance += importance;

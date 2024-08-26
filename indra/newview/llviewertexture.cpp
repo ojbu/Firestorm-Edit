@@ -1976,20 +1976,22 @@ bool LLViewerFetchedTexture::updateFetch()
     }
 
     S32 current_discard = getCurrentDiscardLevelForFetching();
-    S32 desired_discard = getDesiredDiscardLevel();
+    //S32 current_discard = getDiscardLevel();
+    S32 desired_discard = llmin(getDesiredDiscardLevel(), getMaxDiscardLevel());
     F32 decode_priority = mMaxVirtualSize;
-    F32 high_priority   = LLViewerFetchedTexture::sMaxVirtualSize;  // LLViewerFetchedTexture::sMaxVirtualSize;   
+    F32 high_priority   = (4096 * 4096);  // LLViewerFetchedTexture::sMaxVirtualSize;   
     // <TS:3T> Adjust decode priority depending on various factors
-    if (decode_priority > 0)
-    {
+    //if (decode_priority > 0)
+    //{
         // Let's make faster, high discard decodes higher priority than slower, low discard decodes, so we do the easy work first.
-        decode_priority = mMaxVirtualSize * (((F32) desired_discard + 1.f) / 5.f);
+        //decode_priority = mMaxVirtualSize * (((F32) desired_discard + 1.f) / 6.f);
         // Let's make textures with a lot of important faces a higher priority.
-        decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
-    }
+        //decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
+    //}
     // Let's make sure particles, new textures, HUDs and user's avatar (assigned as HUD) load faster.
-    if (forParticle() || forHUD())
-        decode_priority = high_priority;    
+    if (mMaxVirtualSize > 0 && (getDiscardLevel() < 0 || forParticle() || forHUD() || getMaxFaceImportance() > 1))
+        decode_priority = high_priority;
+    //decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
     decode_priority = llmin(decode_priority, LLViewerFetchedTexture::sMaxVirtualSize);
     // </TS:3T>
 
@@ -2179,7 +2181,7 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FETCHED_TEXTURE");
         make_request = false;
     }
-    else if (getFTType() > 0 && current_discard == 0)
+    else if ((getFTType() > 0 && getFTType() < 4) && current_discard >= 0 && current_discard < desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
         make_request = false;
@@ -2265,7 +2267,9 @@ bool LLViewerFetchedTexture::updateFetch()
                        << " Current: " << current_discard << " Current Size: " << mGLTexturep->getWidth(current_discard) << " x "
                        << mGLTexturep->getHeight(current_discard) << " previous: " << (S32) mRequestedDiscardLevel
                        << " Desired: " << desired_discard << " mFaceList->size(): " << (S32) mFaceList->size()
-                       << " needsAux(): " << (S32)needsAux()
+                       << " needsAux(): " << (S32) needsAux() << " getFTType(): " << getFTType()
+                       << " mForceToSaveRawImage: " << mForceToSaveRawImage << " mBoostLevel: " << mBoostLevel
+                       << " mMaxVirtualSize:" << (S32)mMaxVirtualSize
                        << " fetch_request_discard: " << (S32) fetch_request_discard << " sDesiredDiscardBias: " << LLViewerTexture::sDesiredDiscardBias
                        << LL_ENDL;
         }
@@ -3142,7 +3146,7 @@ void LLViewerFetchedTexture::forceToRefetchTexture(S32 desired_discard, F32 kept
     }
 
     //trigger a new fetch.
-    mForceToSaveRawImage = TRUE ;
+    //mForceToSaveRawImage = TRUE ;
     mDesiredSavedRawDiscardLevel = desired_discard ;
     mKeptSavedRawImageTime = kept_time ;
     mLastReferencedSavedRawImageTime = sCurrentTime ;
@@ -3162,7 +3166,7 @@ void LLViewerFetchedTexture::forceToSaveRawImage(S32 desired_discard, F32 kept_t
 
     if(!mForceToSaveRawImage || mDesiredSavedRawDiscardLevel < 0 || mDesiredSavedRawDiscardLevel > desired_discard)
     {
-        mForceToSaveRawImage = TRUE;
+        //mForceToSaveRawImage = TRUE;
         mDesiredSavedRawDiscardLevel = desired_discard;
 
         //copy from the cached raw image if exists.
