@@ -910,12 +910,11 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
     F32 assignSize = -1;
     F32 assignImportance = 0; // <TS:3T> Importance should always be zero or greater.
-    bool onFace = false;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE
     {
-        for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; ++i)
+        for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; i++)
         {
-            for (U32 fi = 0; fi < imagep->getNumFaces(i); ++fi)
+            for (U32 fi = 0; fi < imagep->getNumFaces(i); fi++)
             {
                 F32 vsize = -1;
                 F32 importance = 0;
@@ -923,8 +922,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
                 if (face && face->getViewerObject() && face->getTextureEntry())
                 {
-                    onFace = true;
-                    vsize = 0;
+                    //vsize = 0;
                     // <TS:3T> - Use avatar distance instead of face to avoid animations possibly causing issues.
                     F32 distance = 0;
                     LLPointer<LLDrawable> drawable;
@@ -934,11 +932,10 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                     }
                     else
                     {
-                        drawable = face->getDrawable()->getRoot();
+                        drawable = face->getDrawable();
                     }
-                    // mDistanceWRTCamera does not seem to be updated reliably, so if it reports something unusual than we request an update.
-                    //if (drawable->mDistanceWRTCamera > 1024) // Max draw distance is 1024m.
-                        drawable->updateDistance(*LLViewerCamera::getInstance(), true);
+                    // mDistanceWRTCamera does not seem to be updated reliably, so updating it just in case.
+                    drawable->updateDistance(*LLViewerCamera::getInstance(), true);
                     distance = drawable->mDistanceWRTCamera;
                     //if (distance <= draw_distance)  // <TS:3T> Only use faces within draw distance or visible.
                     if (distance <= draw_distance || (face->getDrawable() && face->getDrawable()->isVisible())) // <TS:3T> Only use faces within draw distance or visible.
@@ -947,24 +944,26 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                         F32  radius;
                         F32  cos_angle_to_view_dir;
                         bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius); // Do this before getPixelArea so it's updated.
-                        vsize = llmax(face->getPixelArea(), (16 * 16));
+                        if (in_frustum)
+                        {
+                            vsize = face->getPixelArea();
 
-                        importance = face->getImportanceToCamera();
-                     
-                        // scale desired texture resolution higher or lower depending on texture scale
-                        F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
-                        min_scale     = llmax(min_scale * min_scale, 0.1f);
-                        vsize /= min_scale;
+                            importance = face->getImportanceToCamera();
 
-                        if ((importance < 0.90f && LLViewerTexture::sDesiredDiscardBias > 3) ||
-                            LLViewerTexture::sDesiredDiscardBias > 6)
-                            vsize /= llmax(pow(LLViewerTexture::sDesiredDiscardBias, 4), 1);
-                        // <TS:3T> Avoid changing vsize to reduce decoding unnecessarily.
-                        if (!in_frustum && LLViewerTexture::sDesiredDiscardBias > 5)
-                        {  // further reduce by discard bias when off screen or occluded
-                            vsize /= 4.0f;
+                            // scale desired texture resolution higher or lower depending on texture scale
+                            F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
+                            min_scale     = llmax(min_scale * min_scale, 0.1f);
+                            vsize /= min_scale;
+
+                            if (importance < ((LLViewerTexture::sDesiredDiscardBias - 1) * 0.20) && vsize > 64)
+                                vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias - 1), 4), 1);
+
+                            if (face->isState(LLFace::TEXTURE_ANIM))
+                            {
+                                vsize      = (2048 * 2048);
+                                importance = (F32) in_frustum;
+                            }  
                         }
-                        // </TS:3T>
 
                         if (face->mFirstTextureLoad && face->mAvatar && !imagep->isMissingAsset() && imagep->getDiscardLevel() < 0)
                             face->mAvatar->notifyAttachmentMeshLoaded();  // <TS:3T/> Resets mFullyLoadedTimer for the avatar.
@@ -978,12 +977,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                             importance = (F32) in_frustum;
                         }
 
-                        if (face->isState(LLFace::TEXTURE_ANIM))
-                        {
-                            vsize      = (2048 * 2048);
-                            importance = (F32) in_frustum;
-                        }   
-                        vsize = llmax(vsize, 64);
+                         vsize = llmax(vsize, 64);
                     }
 
                     if (face->isState(LLFace::HUD_RENDER) || (face->mAvatar && face->mAvatar->isSelf())) // <TS:3T> Huds and user's avatar are very important.
@@ -1004,8 +998,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
         }
     }
 
-    if (assignImportance > 0)
-        imagep->setMaxFaceImportance(assignImportance);
+    imagep->setMaxFaceImportance(assignImportance);
     //imagep->setDebugText(llformat("%.3f - %d", sqrtf(imagep->getMaxVirtualSize()), imagep->getBoostLevel()));
 
     F32 lazy_flush_timeout = 30.f;   // Delete after n seconds, or 0 to not delete until VRAM threshold reached.

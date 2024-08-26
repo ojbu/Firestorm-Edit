@@ -1977,7 +1977,7 @@ bool LLViewerFetchedTexture::updateFetch()
 
     S32 current_discard = getCurrentDiscardLevelForFetching();
     //S32 current_discard = getDiscardLevel();
-    S32 desired_discard = llmin(getDesiredDiscardLevel(), getMaxDiscardLevel());
+    S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
     F32 high_priority   = (4096 * 4096);  // LLViewerFetchedTexture::sMaxVirtualSize;   
     // <TS:3T> Adjust decode priority depending on various factors
@@ -1989,7 +1989,8 @@ bool LLViewerFetchedTexture::updateFetch()
         //decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
     //}
     // Let's make sure particles, new textures, HUDs and user's avatar (assigned as HUD) load faster.
-    if (mMaxVirtualSize > 0 && (getDiscardLevel() < 0 || forParticle() || forHUD() || getMaxFaceImportance() > 1))
+    //if (mMaxVirtualSize > 0 && ((current_discard < 0 && getMaxFaceImportance() > 0)|| forHUD() || getMaxFaceImportance() > 1))
+    if (mMaxVirtualSize > 0 && (forParticle() || forHUD() || getMaxFaceImportance() > 1))
         decode_priority = high_priority;
     //decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
     decode_priority = llmin(decode_priority, LLViewerFetchedTexture::sMaxVirtualSize);
@@ -2182,6 +2183,11 @@ bool LLViewerFetchedTexture::updateFetch()
         make_request = false;
     }
     else if ((getFTType() > 0 && getFTType() < 4) && current_discard >= 0 && current_discard < desired_discard)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
+        make_request = false;
+    }
+    else if ((mBoostLevel > 0) && current_discard >= 0 && current_discard < desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
         make_request = false;
