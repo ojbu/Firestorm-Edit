@@ -30,22 +30,30 @@
 
 
 
-// Map is organized with a string that is "GridX-GridY-(SimZ/MaxDrawDistance)"
-typedef std::unordered_map<std::string, int64_t> grid_subdiv_map;
+// Map is organized with a string that is "GridX-GridY-(SimZ/MaxDrawDistance)", then by nodeID from CTB.
+typedef std::unordered_map<std::string, std::unordered_map<uint64_t, std::list<std::string>>> subdiv_node_map;
 
 class TSSubDivisonLOD
 {
   public:
     TSSubDivisonLOD();
-    static TSSubDivisonLOD sTSSubDivisonLOD;
+
     //static TSSubDivisonLOD* getLOD() { return sTSSubDivisonLOD; }
-    static int64_t const CBT_DEFAULT_DEPTH = 9;
-    static std::string getID(int64_t region_handle, int64_t simZ);
-    void checkSim(std::string id, const int64_t region_handle);
-    static uint64_t getSimNode(const int64_t region_handle, const float vector[3], const int depth, const float extents);
+    static uint64_t const CBT_DEFAULT_DEPTH = 11;
+    static std::string getID(uint64_t region_handle, uint64_t simZ);
+    void addObject(std::string id, uint64_t node, std::string object);
+    void removeObject(std::string id, uint64_t node, std::string object);
+    static void updateObject(std::string id, uint64_t old_node, uint64_t new_node, std::string object);
+    static uint64_t getNumObjects(std::string id, uint64_t node);
+    static std::list<std::string> TSSubDivisonLOD::getObjects(std::string id, uint64_t node);
+    bool checkSim(std::string id, const uint64_t region_handle);
+    static std::list<uint64_t> getNeighbors(uint64_t node);
+    static float getNodeRadius(uint64_t node, const int depth, const float extents);
+    static uint64_t getSimNode(const uint64_t region_handle, const float vector[3], const int depth, const float extents);
     static uint64_t positionToNode(const float x, const float y, const int depth, const float extents);
   protected:
-    grid_subdiv_map mGridTree; 
+    subdiv_node_map mNodeMap;
 
 };
 
+static TSSubDivisonLOD sTSSubDivisonLOD;

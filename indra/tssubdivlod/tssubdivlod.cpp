@@ -24,6 +24,9 @@
  * $/LicenseInfo$
  */
 #include "tssubdivlod.h"
+#include <string>
+#include <unordered_map>
+#include <list>
 #define CBT_IMPLEMENTATION
 #define CBT_STATIC
 #include "cbt.h"
@@ -31,25 +34,85 @@
 #define LEB_STATIC
 #include "leb.h"
 
-TSSubDivisonLOD::TSSubDivisonLOD()
-{
-    
+TSSubDivisonLOD::TSSubDivisonLOD() {
+    //mNodeMap = new subdiv_node_map;
 }
 
-std::string TSSubDivisonLOD::getID(int64_t region_handle, int64_t simZ)
+std::string TSSubDivisonLOD::getID(uint64_t region_handle, uint64_t position_z)
 {
-    int32_t gridX = ((int32_t) (region_handle >> 32));
-    int32_t gridY = ((int32_t) (region_handle & 0xFFFFFFFF));
+    int32_t gridX = ((uint32_t) (region_handle >> 32));
+    int32_t gridY = ((uint32_t) (region_handle & 0xFFFFFFFF));
+    int32_t simZ  = ((uint32_t) floor(position_z / 1024));
     return std::to_string(gridX) + "-" + std::to_string(gridY) + "-" + std::to_string(simZ);
 };
 
-void TSSubDivisonLOD::checkSim(std::string id, const int64_t region_handle)
+void TSSubDivisonLOD::addObject(std::string id, uint64_t node, std::string object)
 {
-    if (!mGridTree[id])
-        mGridTree[id] = region_handle;
+    mNodeMap[id][node].push_back(object);
+}
+
+void TSSubDivisonLOD::removeObject(std::string id, uint64_t node, std::string object)
+{
+    mNodeMap[id][node].remove(object);
+}
+
+void TSSubDivisonLOD::updateObject(std::string id, uint64_t old_node, uint64_t new_node, std::string object)
+{
+    if (old_node > 0)
+        sTSSubDivisonLOD.mNodeMap[id][old_node].remove(object);
+    if (new_node > 0)
+        sTSSubDivisonLOD.mNodeMap[id][new_node].push_back(object);
+}
+
+uint64_t TSSubDivisonLOD::getNumObjects(std::string id, uint64_t node)
+{
+
+    return (uint64_t)sTSSubDivisonLOD.mNodeMap[id][node].size();
+}
+
+std::list<std::string> TSSubDivisonLOD::getObjects(std::string id, uint64_t node)
+{
+
+    return sTSSubDivisonLOD.mNodeMap[id][node];
+}
+
+bool TSSubDivisonLOD::checkSim(std::string id, const uint64_t region_handle)
+{
+    return mNodeMap[id].size() > 0;
 };
 
-uint64_t TSSubDivisonLOD::getSimNode(const int64_t region_handle, const float vector[3], const int depth, const float extents)
+std::list<uint64_t> TSSubDivisonLOD::getNeighbors(uint64_t node)
+{
+    cbt_Node thisNode = cbt_CreateNode(node, 11);
+
+    leb__SameDepthNeighborIDs neighbors = leb_DecodeSameDepthNeighborIDs(thisNode);
+
+    std::list<uint64_t> neighbor_list;
+
+    neighbor_list.push_back((uint64_t) neighbors.edge);
+    neighbor_list.push_back((uint64_t) neighbors.left);
+    neighbor_list.push_back((uint64_t) neighbors.right);
+
+    return neighbor_list;
+ }
+
+float TSSubDivisonLOD::getNodeRadius(uint64_t node, const int depth, const float extents)
+{
+    float faceVertices[][3] = {
+            {0.0f, 0.0f, extents},
+            {extents, 0.0f, 0.0f}
+        };
+    cbt_Node thisNode = cbt_CreateNode(node, depth);
+    leb_DecodeNodeAttributeArray_Square(thisNode, 2, faceVertices);
+    float x1 = faceVertices[0][1];
+    float y1 = faceVertices[0][2];
+    float x2 = faceVertices[1][1];
+    float y2 = faceVertices[1][2];
+    float distance = (float)sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)) / 2; // No Z, since triangles flat and divided by two for middle
+    return distance;
+}
+
+uint64_t TSSubDivisonLOD::getSimNode(const uint64_t region_handle, const float vector[3], const int depth, const float extents)
 {
     int simZ = (int)floor(vector[2] / 1024);
     std::string id = getID(region_handle, simZ);
