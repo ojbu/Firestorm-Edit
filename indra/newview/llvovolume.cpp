@@ -1116,15 +1116,44 @@ void LLVOVolume::setScale(const LLVector3 &scale, BOOL damped)
 
 LLFace* LLVOVolume::addFace(S32 f)
 {
+    bool is_pbr = false;
     const LLTextureEntry* te = getTE(f);
     LLViewerTexture* imagep = getTEImage(f);
-    if ( te && te->getMaterialParams().notNull())
+    LLFace *facep = mDrawable->addFace(te, imagep);
+
+    if (te)
     {
-        LLViewerTexture* normalp = getTENormalMap(f);
-        LLViewerTexture* specularp = getTESpecularMap(f);
-        return mDrawable->addFace(te, imagep, normalp, specularp);
+        if (te->getGLTFRenderMaterial())  // Check for PBR first to save a little work later.
+        {
+            LLFetchedGLTFMaterial *gltf_mat = (LLFetchedGLTFMaterial *) te->getGLTFRenderMaterial();
+            is_pbr = gltf_mat != nullptr;
+            if (is_pbr)
+            {
+                // tell texture streaming system to ignore blinn-phong textures
+                facep->setTexture(LLRender::DIFFUSE_MAP, nullptr);
+                facep->setTexture(LLRender::NORMAL_MAP, nullptr);
+                facep->setTexture(LLRender::SPECULAR_MAP, nullptr);
+
+                // let texture streaming system know about PBR textures
+                facep->setTexture(LLRender::BASECOLOR_MAP, gltf_mat->mBaseColorTexture);
+                facep->setTexture(LLRender::GLTF_NORMAL_MAP, gltf_mat->mNormalTexture);
+                facep->setTexture(LLRender::METALLIC_ROUGHNESS_MAP, gltf_mat->mMetallicRoughnessTexture);
+                facep->setTexture(LLRender::EMISSIVE_MAP, gltf_mat->mEmissiveTexture);
+
+                return facep;
+            }
+        }
+
+        if (te->getMaterialParams().notNull())
+        {
+            LLViewerTexture *normalp   = getTENormalMap(f);
+            LLViewerTexture *specularp = getTESpecularMap(f);
+            facep->setTexture(LLRender::NORMAL_MAP, normalp);
+            facep->setTexture(LLRender::SPECULAR_MAP, specularp);
+        }
     }
-    return mDrawable->addFace(te, imagep);
+    
+    return facep;
 }
 
 LLDrawable *LLVOVolume::createDrawable(LLPipeline *pipeline)
