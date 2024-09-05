@@ -105,6 +105,7 @@ void LLViewerTextureList::init()
     mInitialized = TRUE ;
     sNumImages = 0;
     mListMemoryIncomingBytes = 0;
+    mForceDecodeTimer.start();
     doPreloadImages();
 }
 
@@ -803,18 +804,18 @@ void LLViewerTextureList::dirtyImage(LLViewerFetchedTexture *image)
 void LLViewerTextureList::updateImages(F32 max_time)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
-    static BOOL cleared = FALSE;
+    //static BOOL cleared = FALSE;
     if(gTeleportDisplay)
     {
-        if(!cleared)
-        {
+        //if(!cleared)
+        //{
             clearFetchingRequests();
             gPipeline.clearRebuildGroups();
-            cleared = TRUE;
-        }
+            //cleared = TRUE;
+        //}
         return;
     }
-    cleared = FALSE;
+    //cleared = FALSE;
 
     LLAppViewer::getTextureFetch()->setTextureBandwidth(LLTrace::get_frame_recording().getPeriodMeanPerSec(LLStatViewer::TEXTURE_NETWORK_DATA_RECEIVED).value());
 
@@ -826,7 +827,7 @@ void LLViewerTextureList::updateImages(F32 max_time)
     }
 
     // make sure each call below gets at least its "fair share" of time
-    F32 min_time = max_time * 0.33f;
+    F32 min_time = max_time * 0.5f; // <TS:3T> Was 3 processes, now only two so 0.33 to 0.5
     F32 remaining_time = max_time;
 
     //loading from fast cache
@@ -922,7 +923,24 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
 
                 if (face && face->getViewerObject() && face->getTextureEntry())
                 {
-                    //vsize = 0;
+                    //vsize++;
+                    //  <TS:3T/> Resets mFullyLoadedTimer for the avatar.
+                    if (face->mFirstTextureLoad && face->mAvatar && !imagep->isMissingAsset() && imagep->getDiscardLevel() < 0)
+                        face->mAvatar->notifyAttachmentMeshLoaded();
+                    // <TS:3T/> Server bakes will never be set as missing, so we need to adjust
+                    // for some perhaps retrying forever!
+                    if (face->mFirstTextureLoad && imagep->getDiscardLevel() >= 0 ||
+                        imagep->getFTType() == FTT_SERVER_BAKE)  
+                        face->mFirstTextureLoad = false;
+
+                    if (face->isState(LLFace::PARTICLE))
+                    {
+                        vsize = 256 * 256;
+                        imagep->setForParticle();
+                        assignImportance++;
+                        assignSize = llmax(vsize, assignSize);
+                        continue;
+                    }
                     // <TS:3T> - Use avatar distance instead of face to avoid animations possibly causing issues.
                     F32 distance = 0;
                     LLPointer<LLDrawable> drawable;
@@ -932,52 +950,46 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
                     }
                     else
                     {
-                        drawable = face->getDrawable();
+                        drawable = face->getDrawable()->getRoot();
                     }
                     // mDistanceWRTCamera does not seem to be updated reliably, so updating it just in case.
-                    drawable->updateDistance(*LLViewerCamera::getInstance(), true);
+                    //drawable->updateDistance(*LLViewerCamera::getInstance(), true);
                     distance = drawable->mDistanceWRTCamera;
-                    //if (distance <= draw_distance)  // <TS:3T> Only use faces within draw distance or visible.
+                    // <TS:3T> Only use faces within draw distance or visible.
                     if (distance <= draw_distance || (face->getDrawable() && face->getDrawable()->isVisible())) // <TS:3T> Only use faces within draw distance or visible.
                     {
                         const LLTextureEntry *te = face->getTextureEntry();
                         F32  radius;
                         F32  cos_angle_to_view_dir;
                         bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius); // Do this before getPixelArea so it's updated.
-                        if (in_frustum)
+                        //if (in_frustum)
                         {
-                            vsize = face->getPixelArea();
-
                             importance = face->getImportanceToCamera();
+
+                            if (face->isState(LLFace::TEXTURE_ANIM))
+                            {
+                                vsize = (2048 * 2048);
+                                importance += (F32) in_frustum;
+                                assignImportance += importance;
+                                assignSize = llmax(vsize, assignSize);
+                                continue;
+                            }
+
+                            vsize = face->getPixelArea();                           
 
                             // scale desired texture resolution higher or lower depending on texture scale
                             F32 min_scale = te ? llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT())) : 1.f;
                             min_scale     = llmax(min_scale * min_scale, 0.1f);
                             vsize /= min_scale;
 
-                            if (importance < ((LLViewerTexture::sDesiredDiscardBias - 1) * 0.20) && vsize > 64)
+                            if (importance < ((LLViewerTexture::sDesiredDiscardBias - 1) * 0.20) && vsize > (64 * 64))
                                 vsize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias - 1), 4), 1);
-
-                            if (face->isState(LLFace::TEXTURE_ANIM))
-                            {
-                                vsize      = (2048 * 2048);
-                                importance = (F32) in_frustum;
-                            }  
                         }
-
-                        if (face->mFirstTextureLoad && face->mAvatar && !imagep->isMissingAsset() && imagep->getDiscardLevel() < 0)
-                            face->mAvatar->notifyAttachmentMeshLoaded();  // <TS:3T/> Resets mFullyLoadedTimer for the avatar.
-                        if (face->mFirstTextureLoad && imagep->getDiscardLevel() >= 0 || imagep->getFTType() == FTT_SERVER_BAKE)  // <TS:3T/> Server bakes will never be set as missing, so we need to adjust for some perhaps retrying forever!
-                            face->mFirstTextureLoad = false;
-
-                        if (face->isState(LLFace::PARTICLE))
+                        importance += (F32) in_frustum;
+                        if (face->isState(LLFace::RIGGED))
                         {
-                            vsize = 256 * 256;
-                            imagep->setForParticle();
-                            importance = (F32) in_frustum;
+                            importance++;
                         }
-
-                         vsize = llmax(vsize, 64);
                     }
 
                     if (face->isState(LLFace::HUD_RENDER) || (face->mAvatar && face->mAvatar->isSelf())) // <TS:3T> Huds and user's avatar are very important.
@@ -1013,7 +1025,7 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     // Flush formatted images using a lazy flush
     //
     // Reset texture state if found on a face or not.
-    imagep->setInactive(assignSize > 0);
+    imagep->setInactive(assignSize >= 0);
     S32 num_refs = imagep->getNumRefs();
     if (num_refs <= min_refs)
     {
@@ -1064,11 +1076,11 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     {
         return;
     }
-    if (imagep->isInFastCacheList())
-    {
-        return; //wait for loading from the fast cache.
-    }
 
+    //if (imagep->isInFastCacheList())
+    //{
+    //    return; //wait for loading from the fast cache.
+    //}
     imagep->processTextureStats();
 }
 
@@ -1107,10 +1119,10 @@ F32 LLViewerTextureList::updateImagesCreateTextures(F32 max_time)
         imagep->createTexture();
         imagep->postCreateTexture();
 
-        if (create_timer.getElapsedTimeF32() > max_time)
-        {
-            break;
-        }
+        //if (create_timer.getElapsedTimeF32() > max_time)
+        //{
+        //    break;
+        //}
     }
     mCreateTextureList.erase(mCreateTextureList.begin(), enditer);
     return create_timer.getElapsedTimeF32();
@@ -1176,7 +1188,7 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");       // default: 32
     // WIP -- dumb code here
     //update MIN_UPDATE_COUNT or 5% of other textures, whichever is greater
-    update_count = llmax((U32) MIN_UPDATE_COUNT, (U32) mUUIDMap.size()/20);
+    update_count = llmax((U32) MIN_UPDATE_COUNT, (U32) mUUIDMap.size() * (gFPSClamped / 1000));
     update_count = llmin(update_count, (U32) mUUIDMap.size());
 
     {

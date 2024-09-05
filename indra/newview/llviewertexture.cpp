@@ -1979,7 +1979,8 @@ bool LLViewerFetchedTexture::updateFetch()
     //S32 current_discard = getDiscardLevel();
     S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
-    F32 high_priority   = (4096 * 4096);  // LLViewerFetchedTexture::sMaxVirtualSize;   
+    //F32 high_priority   = (2048 * 2048);  // LLViewerFetchedTexture::sMaxVirtualSize;
+    F32 importance      = getMaxFaceImportance();
     // <TS:3T> Adjust decode priority depending on various factors
     //if (decode_priority > 0)
     //{
@@ -1989,10 +1990,9 @@ bool LLViewerFetchedTexture::updateFetch()
         //decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
     //}
     // Let's make sure particles, new textures, HUDs and user's avatar (assigned as HUD) load faster.
-    //if (mMaxVirtualSize > 0 && ((current_discard < 0 && getMaxFaceImportance() > 0)|| forHUD() || getMaxFaceImportance() > 1))
-    if (mMaxVirtualSize > 0 && (forParticle() || forHUD() || getMaxFaceImportance() > 1))
-        decode_priority = high_priority;
-    //decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
+    if (((current_discard < 0 && importance > 0) || forHUD()))
+        decode_priority *= 4;
+    decode_priority *= llclamp(importance, 1, 4);
     decode_priority = llmin(decode_priority, LLViewerFetchedTexture::sMaxVirtualSize);
     // </TS:3T>
 
@@ -2158,6 +2158,10 @@ bool LLViewerFetchedTexture::updateFetch()
         }
     }
 
+    S32 fetchstate = LLAppViewer::getTextureFetch()->getFetchState(mID, mDownloadProgress, mRequestedDownloadPriority, mFetchPriority, mFetchDeltaTime, mRequestDeltaTime, mCanUseHTTP);
+    if (fetchstate < 14)  // LLTextureFetchWorker::INIT = 1, DONE = 14
+            LLAppViewer::getTextureFetch()->updateRequestPriority(mID, decode_priority);
+
     desired_discard = llmin(desired_discard, getMaxDiscardLevel());
 
     bool make_request = true;
@@ -2176,21 +2180,42 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - create or missing");
         make_request = false;
     }
-    else if (getType() == LLViewerTexture::FETCHED_TEXTURE &&
-        current_discard >= 0 && current_discard < desired_discard)
+    else if (current_discard < 0)
+    {
+        make_request = true; // This is here only to break from the if else chain, knowing all remaining require the opposite
+    }
+    else if (getType() == LLViewerTexture::FETCHED_TEXTURE && current_discard < desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FETCHED_TEXTURE");
         make_request = false;
     }
-    else if ((getFTType() > 0 && getFTType() < 4) && current_discard >= 0 && current_discard < desired_discard)
+    else if ((getFTType() > 0 && getFTType() < 4) && current_discard < desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
         make_request = false;
     }
-    else if ((mBoostLevel > 0) && current_discard >= 0 && current_discard < desired_discard)
+    else if ((mBoostLevel > 0) && current_discard < desired_discard)
     {
-        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust Boost");
         make_request = false;
+    }
+    //else if (hasCameraChanged(5) && (!forSculpt() || importance <= 0.0f || desired_discard > 2))
+    else if (hasCameraChanged(5) && importance <= 0.0f && !forSculpt() && !needsUpdate())
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Camera has moved in last 5 frames");
+        make_request = false;
+    }
+    //else if ((LLViewerOctreeEntryData::getCurrentFrame() - mLastUpdateFrame) < (20 * (5 - current_discard)))
+    else if (mLastTimeUpdated.getElapsedTimeF32() <
+             (gTextureList.getNumImages() / 1000) * LLViewerTexture::sDesiredDiscardBias)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Texture was updated recently");
+        make_request = false;
+    }
+    else if (mMaxVirtualSize <= 0 && !forSculpt())
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - mMaxVirtualSize too small for update");
+        //make_request = false;
     }
     //else if (current_discard >= 0 && current_discard <= mMinDiscardLevel)
     //{
@@ -2267,7 +2292,7 @@ bool LLViewerFetchedTexture::updateFetch()
         S32 fetch_request_discard = -1;
         fetch_request_discard = LLAppViewer::getTextureFetch()->createRequest(mFTType, mUrl, getID(), getTargetHost(), decode_priority,
                                                                               w, h, c, desired_discard, needsAux(), mCanUseHTTP);
-        if (true)
+        if (false)
         {
             LL_WARNS() << "updateFetch MIP TEST " << mID << " " << (S32) getType() << " wXh " << w << " x " << h
                        << " Current: " << current_discard << " Current Size: " << mGLTexturep->getWidth(current_discard) << " x "
