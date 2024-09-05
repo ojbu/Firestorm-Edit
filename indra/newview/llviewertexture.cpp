@@ -1159,6 +1159,7 @@ void LLViewerFetchedTexture::init(bool firstinit)
 
     mFTType = FTT_UNKNOWN;
     mIncomingChangeBits = 0;
+    mLastTimeUpdated.start();
 }
 
 LLViewerFetchedTexture::~LLViewerFetchedTexture()
@@ -1979,17 +1980,8 @@ bool LLViewerFetchedTexture::updateFetch()
     //S32 current_discard = getDiscardLevel();
     S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
-    //F32 high_priority   = (2048 * 2048);  // LLViewerFetchedTexture::sMaxVirtualSize;
     F32 importance      = getMaxFaceImportance();
-    // <TS:3T> Adjust decode priority depending on various factors
-    //if (decode_priority > 0)
-    //{
-        // Let's make faster, high discard decodes higher priority than slower, low discard decodes, so we do the easy work first.
-        //decode_priority = mMaxVirtualSize * (((F32) desired_discard + 1.f) / 6.f);
-        // Let's make textures with a lot of important faces a higher priority.
-        //decode_priority *= llclamp((getMaxFaceImportance() * 4), 1, 4);
-    //}
-    // Let's make sure particles, new textures, HUDs and user's avatar (assigned as HUD) load faster.
+
     if (((current_discard < 0 && importance > 0) || forHUD()))
         decode_priority *= 4;
     decode_priority *= llclamp(importance, 1, 4);
@@ -2021,8 +2013,9 @@ bool LLViewerFetchedTexture::updateFetch()
             if (mIncomingChangeBits > 0)
             {
                 gTextureList.mListMemoryIncomingBytes -= (S32)mIncomingChangeBits;
-                mIncomingChangeBits = 0;
+                //mIncomingChangeBits = 0;
             }
+            mLastTimeUpdated.reset();
         }
         else
         {
@@ -2205,9 +2198,7 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Camera has moved in last 5 frames");
         make_request = false;
     }
-    //else if ((LLViewerOctreeEntryData::getCurrentFrame() - mLastUpdateFrame) < (20 * (5 - current_discard)))
-    else if (mLastTimeUpdated.getElapsedTimeF32() <
-             (gTextureList.getNumImages() / 1000) * LLViewerTexture::sDesiredDiscardBias)
+    else if (mLastTimeUpdated.getElapsedTimeF32() < LLViewerTexture::sDesiredDiscardBias)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Texture was updated recently");
         make_request = false;
@@ -2307,9 +2298,14 @@ bool LLViewerFetchedTexture::updateFetch()
         if (fetch_request_discard >= 0)
         {
             if (w * h * c > 0) {
-                mIncomingChangeBits = (getWidth(fetch_request_discard) * getHeight(fetch_request_discard) * getComponents());
+                if (current_discard >=0 )
+                    mIncomingChangeBits =
+                        (getWidth(fetch_request_discard) * getHeight(fetch_request_discard) * getComponents());
+                else
+                    mIncomingChangeBits = (64 * 64 * 4);
                 gTextureList.mListMemoryIncomingBytes += (S32)mIncomingChangeBits;
-            }            
+            }
+            //gTextureList.processTexture(this);
 
             LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - request created");
             mHasFetcher = TRUE;
@@ -2338,6 +2334,8 @@ bool LLViewerFetchedTexture::updateFetch()
             LL_DEBUGS("Texture") << "exceeded idle time " << FETCH_IDLE_TIME << ", deleting request: " << getID() << LL_ENDL;
             LLAppViewer::getTextureFetch()->deleteRequest(getID(), true);
             mHasFetcher = FALSE;
+            mLastTimeUpdated.reset();
+            //gTextureList.unprocessTexture(this);
         }
     }
 
