@@ -1224,11 +1224,11 @@ bool LLTextureFetchWorker::doWork(S32 param)
         mCacheWriteHandle = LLTextureCache::nullHandle();
         setState(LOAD_FROM_TEXTURE_CACHE);
         mInCache = FALSE;
-        //mDesiredSize = llmax(mDesiredSize, TEXTURE_CACHE_ENTRY_SIZE); // min desired size is TEXTURE_CACHE_ENTRY_SIZE
+        mDesiredSize = llmax(mDesiredSize, TEXTURE_CACHE_ENTRY_SIZE); // min desired size is TEXTURE_CACHE_ENTRY_SIZE
         LL_DEBUGS(LOG_TXT) << mID << ": Priority: " << llformat("%8.0f",mImagePriority)
                            << " Desired Discard: " << mDesiredDiscard << " Desired Size: " << mDesiredSize << LL_ENDL;
-        if (mDesiredSize == 0)
-            setState(DONE);
+        //if (mDesiredSize == 0)
+        //    setState(DONE);
         // fall through
     }
 
