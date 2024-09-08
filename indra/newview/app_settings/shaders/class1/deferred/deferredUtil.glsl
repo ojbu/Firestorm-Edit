@@ -100,10 +100,10 @@ void calcHalfVectors(vec3 lv, vec3 n, vec3 v,
 {
     l  = normalize(lv);
     h  = normalize(l + v);
-    nh = clamp(dot(n, h), 0.0, 1.0);
-    nl = clamp(dot(n, l), 0.0, 1.0);
-    nv = clamp(dot(n, v), 0.0, 1.0);
-    vh = clamp(dot(v, h), 0.0, 1.0);
+    nh = clamp(dot(n, h), 0.00001, 1.0);
+    nl = clamp(dot(n, l), 0.00001, 1.0);
+    nv = clamp(dot(n, v), 0.00001, 1.0);
+    vh = clamp(dot(v, h), 0.00001, 1.0);
 
     lightDist = length(lv);
 }
