@@ -2398,6 +2398,8 @@ void LLVOAvatar::resetSkeleton(bool reset_animations)
         // </FS:Ansariel>
     }
 
+    updateIsFullyLoaded();
+
     LL_DEBUGS("Avatar") << avString() << " reset ends" << LL_ENDL;
 }
 
@@ -10629,6 +10631,9 @@ void LLVOAvatar::processAvatarAppearance( LLMessageSystem* mesgsys )
     if (getOverallAppearance() != AOA_NORMAL)
     {
         resetSkeleton(false);
+    }
+    else {
+        updateIsFullyLoaded();
     }
 }
 
