@@ -997,28 +997,6 @@ BOOL LLVOAvatar::isFullyTextured() const
             return FALSE;
         }
     }
-    for (auto const &attachment_point : mAttachmentPoints)
-    {        
-        LLViewerJointAttachment *attachment = attachment_point.second;
-        if (attachment && attachment->getValid())
-            {
-            for (auto const &attached_object : attachment->mAttachedObjects)
-                {
-                    if (attached_object)
-                    {
-                        for (S32 i = 0; i < attached_object->getNumTEs(); i++)
-                        {
-                            LLViewerFetchedTexture *image =
-                                gTextureList.findImage(LLTextureKey(attached_object->getTE(i)->getID(), TEX_LIST_STANDARD));
-                            if (image && !image->isMissingAsset() && !image->hasGLTexture())
-                            {
-                                return FALSE;
-                            }
-                        }
-                    }
-                }
-            }
-    }
     return TRUE;
 }
 
@@ -9337,7 +9315,7 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
     S32 loaded_attachments = countMeshAttachments(true); // true sent to receive number of loaded attachments
     bool attachments_ready =
         (mFullyLoadedInitialized && total_attachments > 0 && loaded_attachments == total_attachments && isFullyTextured());
-    F32 attachment_check_delay = llmax( 2.0f, LLAppViewer::getTextureFetch()->getNumRequests() / (10 * gFPSClamped));
+    F32 attachment_check_delay = llmax( 4.0f, LLAppViewer::getTextureFetch()->getNumRequests() / (10 * gFPSClamped));
     if (mFirstFullyVisible)
     {
         if (!isSelf() && loading)
