@@ -146,7 +146,7 @@ public:
     void setTextureListType(S32 tex_type) { mTextureListType = tex_type; }
     S32 getTextureListType() { return mTextureListType; }
 
-    void addTextureStats(F32 virtual_size, BOOL needs_gltexture = TRUE) const;
+    bool addTextureStats(F32 virtual_size, BOOL needs_gltexture = TRUE) const;
     void resetTextureStats();
     void setMaxVirtualSizeResetInterval(S32 interval)const {mMaxVirtualSizeResetInterval = interval;}
     void resetMaxVirtualSizeResetCounter()const {mMaxVirtualSizeResetCounter = mMaxVirtualSizeResetInterval;}
@@ -412,6 +412,7 @@ public:
     BOOL isDeleted() ;
     BOOL isInactive() ;
     BOOL isDeletionCandidate();
+    BOOL isActive();
     void setDeletionCandidate() ;
     void setInactive(bool found) ;
     BOOL getUseDiscard() const { return mUseMipMaps && !mDontDiscard; }
@@ -529,6 +530,7 @@ protected:
     BOOL            mPauseLoadedCallBacks;
     callback_list_t mLoadedCallbackList;
     F32             mLastCallBackActiveTime;
+    S32             mLastUpdateFrame;
 
     LLPointer<LLImageRaw> mRawImage;
     S32 mRawDiscardLevel = -1;
@@ -569,6 +571,7 @@ protected:
     BOOL   mForParticle ;  // a flag if the texture is used as a particle
 
 public:
+    LLTimer mLastTimeUpdated;
     static F32 sMaxVirtualSize; //maximum possible value of mMaxVirtualSize
     static LLPointer<LLViewerFetchedTexture> sMissingAssetImagep;   // Texture to show for an image asset that is not in the database
     static LLPointer<LLViewerFetchedTexture> sWhiteImagep;  // Texture to show NOTHING (whiteness)

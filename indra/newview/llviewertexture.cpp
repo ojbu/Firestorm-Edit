@@ -64,6 +64,7 @@
 
 #include "llmimetypes.h"
 
+#include "llviewerdisplay.h"
 // extern
 const S32Megabytes gMinVideoRam(32);
 // <FS:Ansariel> Texture memory management
@@ -609,6 +610,11 @@ void LLViewerTexture::updateClass()
 
 
     LLViewerTexture::sFreezeImageUpdates = false; // sDesiredDiscardBias > (desired_discard_bias_max - 1.0f);
+    //static LLCachedControl<F32> draw_distance(gSavedSettings, "RenderFarClip");
+    if (LLViewerTexture::sDesiredDiscardBias < 5)
+    {
+        // Reduce draw distance every 2 seconds above 5 but make sure desired draw distance is saved.
+    }
 }
 
 //end of static functions
@@ -802,8 +808,9 @@ void LLViewerTexture::forceImmediateUpdate()
 {
 }
 
-void LLViewerTexture::addTextureStats(F32 virtual_size, BOOL needs_gltexture) const
+bool LLViewerTexture::addTextureStats(F32 virtual_size, BOOL needs_gltexture) const
 {
+    bool needs_update = false;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
     if(needs_gltexture)
     {
@@ -811,7 +818,11 @@ void LLViewerTexture::addTextureStats(F32 virtual_size, BOOL needs_gltexture) co
     }
 
     virtual_size = llmin(virtual_size, LLViewerFetchedTexture::sMaxVirtualSize);
+    if (mMaxVirtualSize != virtual_size)
+        needs_update = true;
     mMaxVirtualSize = virtual_size;
+
+    return needs_update;
 }
 
 void LLViewerTexture::resetTextureStats()
@@ -1315,6 +1326,11 @@ BOOL LLViewerFetchedTexture::isInactive()
 BOOL LLViewerFetchedTexture::isDeletionCandidate()
 {
     return mTextureState == DELETION_CANDIDATE;
+}
+
+BOOL LLViewerFetchedTexture::isActive()
+{
+    return mTextureState >= ACTIVE;
 }
 
 void LLViewerFetchedTexture::setDeletionCandidate()
@@ -1920,7 +1936,7 @@ void LLViewerFetchedTexture::setBoostLevel(S32 level)
 {
     LLViewerTexture::setBoostLevel(level);
 
-    if (level >= LLViewerTexture::BOOST_HIGH)
+    if (level > LLViewerTexture::BOOST_HIGH)
     {
         mDesiredDiscardLevel = 0;
     }
@@ -1984,7 +2000,7 @@ bool LLViewerFetchedTexture::updateFetch()
     F32 importance      = getMaxFaceImportance();
 
     if (((current_discard < 0 && importance > 0) || forHUD()))
-        decode_priority *= 4;
+        decode_priority = (4096 * 4096);
     decode_priority *= llclamp(importance, 1, 4);
     decode_priority = llmin(decode_priority, LLViewerFetchedTexture::sMaxVirtualSize);
     // </TS:3T>
@@ -2183,6 +2199,12 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FETCHED_TEXTURE");
         make_request = false;
     }
+    //else if (getFTType() == 1)
+    //{
+    //    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
+    //    desired_discard = 5;
+    //    //make_request = false;
+    //}
     else if ((getFTType() > 0 && getFTType() < 4) && current_discard < desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
@@ -2191,15 +2213,15 @@ bool LLViewerFetchedTexture::updateFetch()
     else if ((mBoostLevel > 0) && current_discard < desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust Boost");
-        make_request = false;
+            make_request = false;
     }
     //else if (hasCameraChanged(5) && (!forSculpt() || importance <= 0.0f || desired_discard > 2))
-    else if (hasCameraChanged(5) && importance <= 0.0f && !forSculpt() && !needsUpdate())
+    else if (hasCameraChanged(5) && importance <= 0.0f && !forSculpt())
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Camera has moved in last 5 frames");
-        make_request = false;
+       // make_request = false;
     }
-    else if (mLastTimeUpdated.getElapsedTimeF32() < LLViewerTexture::sDesiredDiscardBias)
+    else if (mLastTimeUpdated.getElapsedTimeF32() < (LLViewerTexture::sDesiredDiscardBias * (1 + (current_discard < desired_discard))) && LLViewerTexture::sDesiredDiscardBias < 5 && !forParticle())
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Texture was updated recently");
         make_request = false;
@@ -2298,6 +2320,7 @@ bool LLViewerFetchedTexture::updateFetch()
         }
         if (fetch_request_discard >= 0)
         {
+            mLastUpdateFrame = LLViewerOctreeEntryData::getCurrentFrame();
             if (w * h * c > 0) {
                 if (current_discard >=0 )
                     mIncomingChangeBits =
@@ -2306,7 +2329,7 @@ bool LLViewerFetchedTexture::updateFetch()
                     mIncomingChangeBits = (64 * 64 * 4);
                 gTextureList.mListMemoryIncomingBytes += (S32)mIncomingChangeBits;
             }
-            //gTextureList.processTexture(this);
+            //gTextureList.markTexture(this);
 
             LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - request created");
             mHasFetcher = TRUE;
@@ -2336,7 +2359,7 @@ bool LLViewerFetchedTexture::updateFetch()
             LLAppViewer::getTextureFetch()->deleteRequest(getID(), true);
             mHasFetcher = FALSE;
             mLastTimeUpdated.reset();
-            //gTextureList.unprocessTexture(this);
+            //gTextureList.unmarkTexture(this); 
         }
     }
 
@@ -3280,6 +3303,7 @@ void LLViewerLODTexture::init(bool firstinit)
     mTexelsPerImage = 64.f*64.f;
     mDiscardVirtualSize = 0.f;
     mCalculatedDiscardLevel = -1.f;
+    mLastUpdateFrame = 0; // <FS:3T> Tracking last frame a texture was updated.
 }
 
 //virtual
