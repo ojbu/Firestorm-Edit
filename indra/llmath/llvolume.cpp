@@ -2758,6 +2758,11 @@ bool LLVolume::isMeshAssetLoaded()
     return mIsMeshAssetLoaded;
 }
 
+bool LLVolume::isMeshAssetTextured()
+{
+    return mIsMeshAssetLoaded;
+}
+
 void LLVolume::setMeshAssetLoaded(bool loaded)
 {
     mIsMeshAssetLoaded = loaded;
