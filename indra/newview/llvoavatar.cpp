@@ -141,6 +141,8 @@
 #include "fslslbridge.h" // <FS:PP> Movelock position refresh
 
 #include "fsdiscordconnect.h" // <FS:LO> tapping a place that happens on landing in world to start up discord
+#include "llappviewer.h"
+#include "lltexturefetch.h"
 
 extern F32 SPEED_ADJUST_MAX;
 extern F32 SPEED_ADJUST_MAX_SEC;
@@ -3342,7 +3344,7 @@ S32 LLVOAvatar::countChildMeshAttachments(LLViewerObject *object, bool loaded)
 {
     S32 countedMeshAttachments = 0;
     if (loaded) {
-        countedMeshAttachments += object->getVolume()->isMeshAssetLoaded();
+        countedMeshAttachments += (object->getVolume()->isMeshAssetLoaded() && object->getVolume()->isMeshAssetTextured());
     }
     else
     {
@@ -9335,7 +9337,7 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
     S32 loaded_attachments = countMeshAttachments(true); // true sent to receive number of loaded attachments
     bool attachments_ready =
         (mFullyLoadedInitialized && total_attachments > 0 && loaded_attachments == total_attachments && isFullyTextured());
-
+    F32 attachment_check_delay = llmax( 2.0f, LLAppViewer::getTextureFetch()->getNumRequests() / (10 * gFPSClamped));
     if (mFirstFullyVisible)
     {
         if (!isSelf() && loading)
@@ -9355,12 +9357,12 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
                 }
         }
         mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > mFirstUseDelaySeconds ||
-            (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > 9.f));
+                        (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > attachment_check_delay));
     }
     else
     {
         mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > LOADED_DELAY ||
-            (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > 9.f));
+                        (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > attachment_check_delay));
     }
 
     if (!mPreviousFullyLoaded && !loading && mFullyLoaded)
@@ -9394,7 +9396,7 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
         mNeedsImpostorUpdate = TRUE;
         mLastImpostorUpdateReason = 6;
     }
-    if (fully_loaded_changed)
+    //if (fully_loaded_changed)
         updateMeshVisibility();
 
     return changed;

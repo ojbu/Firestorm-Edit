@@ -26,6 +26,7 @@
 
 // A "volume" is a box, cylinder, sphere, or other primitive shape.
 
+#include <execution>
 #include "llviewerprecompiledheaders.h"
 
 #include "llvovolume.h"
@@ -1154,6 +1155,55 @@ LLFace* LLVOVolume::addFace(S32 f)
     }
     
     return facep;
+}
+
+bool LLVOVolume::isFaceTextured(S32 f)
+{
+    bool                  is_pbr = false;
+    bool                  loaded = true;
+    const LLTextureEntry *te     = getTE(f);
+    LLViewerTexture      *imagep = getTEImage(f);
+
+    if (te)
+    {
+        if (te->getGLTFRenderMaterial())  // Check for PBR first to save a little work later.
+        {
+            LLFetchedGLTFMaterial *gltf_mat = (LLFetchedGLTFMaterial *) te->getGLTFRenderMaterial();
+            is_pbr                          = gltf_mat != nullptr;
+            if (is_pbr)
+            {
+                loaded = loaded && (gltf_mat->mBaseColorTexture->getDiscardLevel() >= 0 || gltf_mat->mBaseColorTexture->isMissingAsset());
+                loaded = loaded && (gltf_mat->mNormalTexture->getDiscardLevel() >= 0 || gltf_mat->mNormalTexture->isMissingAsset());
+                loaded = loaded && (gltf_mat->mMetallicRoughnessTexture->getDiscardLevel() >= 0 ||
+                                    gltf_mat->mMetallicRoughnessTexture->isMissingAsset());
+                loaded = loaded && (gltf_mat->mEmissiveTexture->getDiscardLevel() >= 0 || gltf_mat->mEmissiveTexture->isMissingAsset());
+                return loaded;
+            }
+        }
+
+        if (te->getMaterialParams().notNull())
+        {
+            loaded = loaded && (imagep->getDiscardLevel() >= 0 || imagep->isMissingAsset());
+            loaded = loaded && (getTENormalMap(f)->getDiscardLevel() >= 0 || getTENormalMap(f)->isMissingAsset());
+            loaded = loaded && (getTESpecularMap(f)->getDiscardLevel() >= 0 || getTESpecularMap(f)->isMissingAsset());
+        }
+    }
+
+    return loaded;
+}
+
+bool LLVOVolume::isMeshAssetTextured()
+{
+
+    std::vector<float> work_list(mDrawable->getNumFaces());
+    std::generate(std::execution::par_unseq, work_list.begin(), work_list.end(),
+                  [this, n = 0]() mutable
+                  {
+                      return isFaceTextured(n++);
+                  });
+    S32 num_faces_textured = std::reduce(std::execution::par, work_list.begin(), work_list.end());
+
+    return bool(num_faces_textured == mDrawable->getNumFaces());
 }
 
 LLDrawable *LLVOVolume::createDrawable(LLPipeline *pipeline)
