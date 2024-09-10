@@ -2564,7 +2564,9 @@ void LLTextureFetchWorker::callbackDecoded(bool success, const std::string &erro
     }
     else
     {
-        LL_WARNS(LOG_TXT) << "DECODE FAILED: " << mID << " Discard: " << (S32)mFormattedImage->getDiscardLevel() << ", reason: " << error_message << LL_ENDL;
+        LL_WARNS(LOG_TXT) << "DECODE FAILED: " << mID
+                          << " Size: " << llformat("%dx%d", mFormattedImage->getWidth(), mFormattedImage->getHeight()) << " Type: " << (S32)mType
+                          << " Discard: " << (S32) mFormattedImage->getDiscardLevel() << ", reason: " << error_message << LL_ENDL;
         removeFromCache();
         mDecodedDiscard = -1; // Redundant, here for clarity and paranoia
     }
