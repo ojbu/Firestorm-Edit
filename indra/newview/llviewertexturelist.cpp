@@ -833,7 +833,7 @@ void LLViewerTextureList::updateImages(F32 max_time)
 
     //loading from fast cache
     //remaining_time -= updateImagesLoadingFastCache(remaining_time);
-    remaining_time = llmax(remaining_time, min_time);
+    //remaining_time = llmax(remaining_time, min_time);
 
     //dispatch to texture fetch threads
     remaining_time -= updateImagesFetchTextures(remaining_time);
@@ -932,43 +932,20 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
                 float   importance =  0;
                 if (face && face->getTextureEntry())
                 {
-                    vsize = 0;
-                    importance = 0.01; // Anything on a face is at least a little important.
-                    if (face->mFirstTextureLoad && imagep->getDiscardLevel() >= 0 || imagep->getFTType() == FTT_SERVER_BAKE)
-                        face->mFirstTextureLoad = false;
-                    // Qualify certain faces by their type to save computation and assert some priorities.
-                    switch (face->mState)
-                    {
-                        case LLFace::PARTICLE:
-                            vsize = (256 * 256);
-                            importance = 0.8f; // Importance assignment determines threshold for discard bias reduction
-                            imagep->setForParticle();
-                            imagep->setBoostLevel(LLViewerTexture::BOOST_HIGH);
-                            break;
-                        case LLFace::HUD_RENDER:
-                            vsize = (1024 * 1024);
-                            importance = 0.8f;
-                            imagep->setForHUD();
-                            imagep->setBoostLevel(LLViewerTexture::BOOST_HUD);
-                            break;
-                        case LLFace::TEXTURE_ANIM:
-                            vsize = (2048 * 2048);
-                            importance = 0.6f;
-                            break;
-                        default:
-                            const LLTextureEntry *te = face->getTextureEntry();
-                            F32 radius;
-                            F32 cos_angle_to_view_dir;
-                            // Calculate the face's pixel area so getPixelArea is updated.
-                            face->calcPixelArea(cos_angle_to_view_dir, radius);
-                            vsize = face->getPixelArea();
-                            // Scale pixel area higher or lower depending on texture scale
-                            F32 min_scale = llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT()));
-                            min_scale = llmax(min_scale * min_scale, 0.1f);
-                            vsize /= min_scale;
-                            // Collect face's importance to total later
-                            importance = llmax(importance, face->getImportanceToCamera());
-                    }
+                    const LLTextureEntry *te = face->getTextureEntry();
+                    F32 radius;
+                    F32 cos_angle_to_view_dir;
+                    // Calculate the face's pixel area so getPixelArea is updated.
+                    bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
+                    vsize = face->getPixelArea();
+                    // Scale pixel area higher or lower depending on texture scale
+                    F32 min_scale = llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT()));
+                    min_scale = llmax(min_scale * min_scale, 0.1f);
+                    vsize /= min_scale;
+                    bool is_anim = face->isState(LLFace::TEXTURE_ANIM);
+                    vsize *= llmax(pow((is_anim && in_frustum) * 2, 4), 1);
+                    // Collect face's importance to total later
+                    importance = llmax(importance, face->getImportanceToCamera()) + (0.6 * is_anim * in_frustum) + 0.01;
                     // Save the un-biased virtual size to the face so it can be used later if necessary.
                     face->setVirtualSize(vsize);
                 }
@@ -1169,7 +1146,7 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
 
             if (iter->second->getGLTexture() && iter->second->getNumRefs() > 1)
             {
-                if (!iter->second->hasFetcher() || iter->second->getBoostLevel() <= 0)
+                if ((!iter->second->hasFetcher() && iter->second->isActive()) || iter->second->getBoostLevel() <= 0)
                     entries.push_back(iter->second);
             }
             ++iter;
@@ -1202,9 +1179,10 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     {
         if (pair.second->getGLTexture() && pair.second->getNumRefs() > 1)
         {
-            if (pair.second->isActive() && (pair.second->hasFetcher() ||
-                pair.second->hasCallbacks() || pair.second->getDiscardLevel() < 0 ||
-                pair.second->getDiscardLevel() != pair.second->getDesiredDiscardLevel()))
+            if (pair.second->isActive() &&
+                (pair.second->hasFetcher() || pair.second->hasCallbacks() ||
+                 pair.second->getDiscardLevel() < 0 ||
+                 pair.second->getDiscardLevel() != pair.second->getDesiredDiscardLevel()))
                 {
                 pair.second->updateFetch();
                 }
