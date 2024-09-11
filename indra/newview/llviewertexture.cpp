@@ -735,7 +735,7 @@ void LLViewerTexture::setBoostLevel(S32 level)
     }
 
     // strongly encourage anything boosted to load at full res
-    if (mBoostLevel >= LLViewerTexture::BOOST_HIGH)
+    if (mBoostLevel > LLViewerTexture::BOOST_HIGH)
     {
         mMaxVirtualSize = 2048.f * 2048.f;
     }
@@ -2219,9 +2219,9 @@ bool LLViewerFetchedTexture::updateFetch()
     else if (hasCameraChanged(5) && importance <= 0.0f && !forSculpt())
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Camera has moved in last 5 frames");
-       // make_request = false;
+        make_request = false;
     }
-    else if (mLastTimeUpdated.getElapsedTimeF32() < (LLViewerTexture::sDesiredDiscardBias * (1 + (current_discard < desired_discard))) && LLViewerTexture::sDesiredDiscardBias < 5 && !forParticle())
+    else if (mLastTimeUpdated.getElapsedTimeF32() < (LLViewerTexture::sDesiredDiscardBias * (1 + (current_discard < desired_discard))) && LLViewerTexture::sDesiredDiscardBias < 6 && !forParticle())
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Texture was updated recently");
         make_request = false;
