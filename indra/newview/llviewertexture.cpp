@@ -685,6 +685,8 @@ void LLViewerTexture::init(bool firstinit)
 
     mMainQueue  = LL::WorkQueue::getInstance("mainloop");
     mImageQueue = LL::WorkQueue::getInstance("LLImageGL");
+
+    mBoostLoaded = 0;
 }
 
 //virtual
@@ -1171,6 +1173,7 @@ void LLViewerFetchedTexture::init(bool firstinit)
 
     mFTType = FTT_UNKNOWN;
     mIncomingChangeBits = 0;
+    mBoostLoaded = 0;
     mLastTimeUpdated.start();
 }
 
@@ -1686,7 +1689,8 @@ void LLViewerFetchedTexture::postCreateTexture()
         mNeedsAux = FALSE;
         destroyRawImage();
     }
-
+    if (getBoostLevel() > 0)
+        mBoostLoaded++;
     mNeedsCreateTexture = false;
 }
 

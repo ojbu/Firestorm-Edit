@@ -828,12 +828,12 @@ void LLViewerTextureList::updateImages(F32 max_time)
     }
 
     // make sure each call below gets at least its "fair share" of time
-    F32 min_time = max_time * 0.5f; // <TS:3T> Was 3 processes, now only two so 0.33 to 0.5
+    F32 min_time = max_time * 0.33f; // <TS:3T> Three processes sharing max_time
     F32 remaining_time = max_time;
 
-    //loading from fast cache
-    //remaining_time -= updateImagesLoadingFastCache(remaining_time);
-    //remaining_time = llmax(remaining_time, min_time);
+    //load boosted images
+    remaining_time -= updateBoostImagesFetchTextures(remaining_time);
+    remaining_time = llmax(remaining_time, min_time);
 
     //dispatch to texture fetch threads
     remaining_time -= updateImagesFetchTextures(remaining_time);
@@ -932,7 +932,8 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
                 float   vsize      =  64; // some faces do not have texture entries early, but we still need to allow the texture to be fetched
                 float   importance =  0;
                 bool    for_particle = false;
-                if (face && face->getTextureEntry())
+                bool    calculate    = (face && face->getTextureEntry() && face->getDrawable()); // pre-calculate bool to help branch predictions
+                if (calculate)
                 {
                     const LLTextureEntry *te = face->getTextureEntry();
                     F32 radius;
@@ -948,11 +949,11 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
                     vsize *= llmax(pow((is_anim && in_frustum) * 2, 4), 1);
                     bool is_hud = face->isState(LLFace::HUD_RENDER);
                     for_particle = face->isState(LLFace::PARTICLE);
-                    // Collect face's importance to total later
-                    importance = llmax(importance, face->getImportanceToCamera()) + (0.6 * (int)is_anim * (int)in_frustum) + (1 * (int)is_hud);
-                    // Save the un-biased virtual size to the face so it can be used later if necessary.
-                    vsize = llmax(vsize * (int)!for_particle, (65536 * (int)for_particle)); // (256 * 256)
-                    vsize = llmax(vsize * (int)!is_hud, (1048576 * (int)is_hud)); // (1024 * 1024)
+                    // Collect face's importance to total later for discard bias reductions
+                    importance = llmax(importance, face->getImportanceToCamera()) + (0.6 * (int) is_anim * (int) in_frustum) +
+                                 (1 * (int) is_hud) + (1 * (int) for_particle);
+                    vsize = llmax(vsize * (int) !for_particle, (65536 * (int) for_particle)); // (256 * 256)
+                    vsize = llmax(vsize * (int) !is_hud, (1048576 * (int) is_hud)); // (1024 * 1024)
                     face->setVirtualSize(vsize);
                 }
                 assignSize = llmax(assignSize, vsize);
@@ -1037,7 +1038,7 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
     }
 
     imagep->processTextureStats();
-    return needs_fetch;
+    return needs_fetch && imagep->isActive();
 }
 
 void LLViewerTextureList::setDebugFetching(LLViewerFetchedTexture* tex, S32 debug_level)
@@ -1132,22 +1133,22 @@ void LLViewerTextureList::forceImmediateUpdate(LLViewerFetchedTexture* imagep)
 
     return ;
 }
-
-F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
+F32 LLViewerTextureList::updateBoostImagesFetchTextures(F32 max_time)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
-    typedef std::vector<LLPointer<LLViewerFetchedTexture> > entries_list_t;
-    entries_list_t entries;
+    typedef std::vector<LLPointer<LLViewerFetchedTexture>> entries_list_t;
+    entries_list_t                                         entries;
 
     // update N textures at beginning of mImageList
-    static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");       // default: 32
-    S32 update_count = llmax( MIN_UPDATE_COUNT, mUUIDMap.size() * (1 / 1000) * max_time);
+    static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");  // default: 32
+    S32 update_count = llmax( MIN_UPDATE_COUNT, mUUIDMap.size() / 100);
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vtluift - copy");
 
         // copy entries out of UUID map for updating
-        uuid_map_t::iterator iter = mUUIDMap.upper_bound(mLastUpdateKey);
+        uuid_map_t::iterator initial_iter = mUUIDMap.upper_bound(mLastBoostUpdateKey);
+        uuid_map_t::iterator iter = initial_iter;
         while (entries.size() <= update_count)
         {
             if (iter == mUUIDMap.end())
@@ -1157,10 +1158,75 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
 
             if (iter->second->getGLTexture() && iter->second->getNumRefs() > 1)
             {
-                if (!iter->second->hasFetcher() || iter->second->getBoostLevel() <= 0)
+                if ((iter->second->getBoostLevel() > LLGLTexture::BOOST_NONE &&
+                     iter->second->getBoostLevel() <= LLGLTexture::BOOST_MAX_LEVEL)
+                    && (iter->second->mBoostLoaded < 1 || (iter->second->forSculpt())))
                     entries.push_back(iter->second);
             }
             ++iter;
+            if (iter == initial_iter)
+                break;
+        }
+    }
+
+    LLTimer timer;
+
+    LLPointer<LLViewerTexture> last_imagep = nullptr;
+    U32                        test_count  = 0;
+    for (auto &imagep : entries)
+    {
+        imagep->updateFetch();
+        
+        last_imagep = imagep;
+        test_count++;
+        if (timer.getElapsedTimeF32() > max_time)
+        {
+            LL_WARNS() << "Boosted count: " << (S32) imagep->mBoostLoaded << " id: " << imagep->getID()
+                       << " getDontDiscard: " << imagep->getDontDiscard() << " test_count: " << test_count
+                << LL_ENDL;
+            break;
+        }
+    }
+
+    if (last_imagep)
+    {
+        mLastBoostUpdateKey = LLTextureKey(last_imagep->getID(), (ETexListType) last_imagep->getTextureListType());
+    }
+
+    return timer.getElapsedTimeF32();
+}
+
+F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
+    typedef std::vector<LLPointer<LLViewerFetchedTexture> > entries_list_t;
+    entries_list_t entries;
+
+    // update N textures at beginning of mImageList
+    static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");       // default: 32
+    S32 update_count = llmax( MIN_UPDATE_COUNT, mUUIDMap.size() / 100);
+
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vtluift - copy");
+
+        // copy entries out of UUID map for updating
+        uuid_map_t::iterator initial_iter = mUUIDMap.upper_bound(mLastUpdateKey);
+        uuid_map_t::iterator iter = initial_iter;
+        while (entries.size() <= update_count)
+        {
+            if (iter == mUUIDMap.end())
+            {
+                iter = mUUIDMap.begin();
+            }
+
+            if (iter->second->getGLTexture() && iter->second->getNumRefs() > 1)
+            {
+                if (!iter->second->hasFetcher() && iter->second->getBoostLevel() <= 0)
+                    entries.push_back(iter->second);
+            }
+            ++iter;
+            if (iter == initial_iter)
+                break;
         }
     }
 
@@ -1190,15 +1256,8 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     {
         if (pair.second->getGLTexture() && pair.second->getNumRefs() > 1)
         {
-            if (pair.second->isActive() &&
-                (pair.second->hasFetcher() || pair.second->hasCallbacks() || (
-                ((pair.second->getBoostLevel() > 0) || pair.second->isForSculptOnly()) &&
-                 (pair.second->getDiscardLevel() != pair.second->getDesiredDiscardLevel() || pair.second->getDiscardLevel() < 0))
-                ) // boosted and sculpty qualifications
-                ) // if
-                {
+            if (pair.second->isActive() && (pair.second->hasFetcher() || pair.second->hasCallbacks()))
                 pair.second->updateFetch();
-                }
         }
     }
 

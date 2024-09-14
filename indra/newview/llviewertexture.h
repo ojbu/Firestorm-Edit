@@ -238,6 +238,7 @@ public:
     static F32  sCurrentTime ;
     static LLUUID sInvisiprimTexture1 ;
     static LLUUID sInvisiprimTexture2 ;
+    U32 mBoostLoaded;
 
     enum EDebugTexels
     {
@@ -441,6 +442,7 @@ public:
     BOOL        hasSavedRawImage() const ;
     F32         getElapsedLastReferencedSavedRawImageTime() const ;
     BOOL        isFullyLoaded() const;
+    BOOL        isBoostLoaded() { return mBoostLoaded; };
 
     BOOL        hasFetcher() const { return mHasFetcher;}
     bool        isFetching() const { return mIsFetching;}

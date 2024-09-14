@@ -155,6 +155,7 @@ public:
 
   private:
     F32  updateImagesCreateTextures(F32 max_time);
+    F32  updateBoostImagesFetchTextures(F32 max_time);
     F32  updateImagesFetchTextures(F32 max_time);
     void updateImagesUpdateStats();
     F32  updateImagesLoadingFastCache(F32 max_time);
@@ -232,6 +233,7 @@ private:
     typedef std::map< LLTextureKey, LLPointer<LLViewerFetchedTexture> > uuid_map_t;
     uuid_map_t mUUIDMap;
     LLTextureKey mLastUpdateKey;
+    LLTextureKey mLastBoostUpdateKey;
 
     typedef std::set < LLPointer<LLViewerFetchedTexture> > image_priority_list_t;
     image_priority_list_t mImageList;
