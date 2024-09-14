@@ -1299,7 +1299,7 @@ void LLViewerFetchedTexture::loadFromFastCache()
 
 void LLViewerFetchedTexture::setForSculpt()
 {
-    static const S32 MAX_INTERVAL = 8; //frames
+    //static const S32 MAX_INTERVAL = 8; //frames
 
     mForSculpt = TRUE;
     if(isForSculptOnly() && hasGLTexture() && !getBoundRecently())
@@ -1308,7 +1308,7 @@ void LLViewerFetchedTexture::setForSculpt()
         mTextureState = ACTIVE;
     }
     //checkCachedRawSculptImage();
-    setMaxVirtualSizeResetInterval(MAX_INTERVAL);
+    //setMaxVirtualSizeResetInterval(MAX_INTERVAL);
 }
 
 BOOL LLViewerFetchedTexture::isForSculptOnly() const
@@ -2193,6 +2193,10 @@ bool LLViewerFetchedTexture::updateFetch()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - create or missing");
         make_request = false;
+    }
+    else if (forSculpt())
+    {
+        desired_discard = 0;
     }
     else if (current_discard < 0)
     {
@@ -3407,6 +3411,8 @@ void LLViewerLODTexture::processTextureStats()
         // Clamp to min desired discard
         mDesiredDiscardLevel = llmin(mMinDesiredDiscardLevel, mDesiredDiscardLevel);
 
+        if (mBoostLevel == LLGLTexture::BOOST_SCULPTED)
+            mDesiredDiscardLevel = 0;
         //
         // At this point we've calculated the quality level that we want,
         // if possible.  Now we check to see if we have it, and take the
