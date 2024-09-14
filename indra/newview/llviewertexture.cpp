@@ -4001,10 +4001,10 @@ F32 LLViewerMediaTexture::getMaxVirtualSize()
     }
     mUpdateVirtualSizeTime = LLFrameTimer::getFrameCount();
 
-    if(!mMaxVirtualSizeResetCounter)
-    {
-        addTextureStats(0.f, FALSE);//reset
-    }
+    //if(!mMaxVirtualSizeResetCounter)
+    //{
+    //    addTextureStats(0.f, FALSE);//reset
+    //}
 
     if(mIsPlaying) //media is playing
     {
