@@ -991,7 +991,7 @@ void LLVOVolume::updateTextureVirtualSize(bool forced)
                 mSculptTexture->addTextureStats(2.f * tex_size * tex_size, FALSE);
             }
 
-            S32 texture_discard = mSculptTexture->getCachedRawImageLevel(); //try to match the texture
+            S32 texture_discard = mSculptTexture->getDiscardLevel(); //try to match the texture
             S32 current_discard = getVolume() ? getVolume()->getSculptLevel() : -2 ;
 
             if (texture_discard >= 0 && //texture has some data available
