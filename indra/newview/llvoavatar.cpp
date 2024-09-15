@@ -9306,16 +9306,17 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
     // And if viewer isn't aware of some parts yet, this gives them a chance
     // to arrive.
     const F32 LOADED_DELAY = FIRST_APPEARANCE_CLOUD_MAX_DELAY;
+    S32 total_attachments = countMeshAttachments(false); // false sent to receive total attachments
+    S32 loaded_attachments = countMeshAttachments(true); // true sent to receive number of loaded attachments
 
-    if (loading)
+    if (loading || total_attachments != loaded_attachments)
     {
         mFullyLoadedTimer.reset();
     }
-    S32 total_attachments = countMeshAttachments(false); // false sent to receive total attachments
-    S32 loaded_attachments = countMeshAttachments(true); // true sent to receive number of loaded attachments
-    bool attachments_ready =
-        (mFullyLoadedInitialized && total_attachments > 0 && loaded_attachments == total_attachments && isFullyTextured());
-    F32 attachment_check_delay = llmax( 4.0f, LLAppViewer::getTextureFetch()->getNumRequests() / (10 * gFPSClamped));
+    bool attachments_ready = (mFullyLoadedInitialized && total_attachments > 0 &&
+                              loaded_attachments == total_attachments && isFullyTextured());
+    
+    F32 attachment_check_delay = llmax(4.0f, gTextureList.getNumImages() / (100 * gFPSClamped));
     if (mFirstFullyVisible)
     {
         if (!isSelf() && loading)
