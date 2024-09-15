@@ -728,6 +728,7 @@ LLVOAvatar::LLVOAvatar(const LLUUID& id,
     // </FS:Ansariel> [Legacy Bake]
     mLastUpdateRequestCOFVersion(-1),
     mLastUpdateReceivedCOFVersion(-1),
+    mNumSameCOFVersion(0),
     mCachedMuteListUpdateTime(0),
     mCachedInMuteList(false),
     mIsControlAvatar(false),
@@ -9336,17 +9337,23 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
                 }
         }
         mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > mFirstUseDelaySeconds ||
-                        (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > attachment_check_delay));
+                        (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > attachment_check_delay)
+                        || (mNumSameCOFVersion > 2 && mRenderUnloadedAvatar));
     }
     else
     {
         mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > LOADED_DELAY ||
-                        (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > attachment_check_delay));
+                        (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > attachment_check_delay)
+                        || (mNumSameCOFVersion > 2 && mRenderUnloadedAvatar));
     }
 
     if (!mPreviousFullyLoaded && !loading && mFullyLoaded)
     {
         debugAvatarRezTime("AvatarRezNotification","fully loaded");
+    }
+    if (!mFullyLoaded && mNumSameCOFVersion > 2)
+    {
+        LL_WARNS() << "Avatar loading failure: " << getFullname() << " - " << getID() << LL_ENDL;
     }
 
     // did our loading state "change" from last call?
@@ -10593,9 +10600,25 @@ void LLVOAvatar::processAvatarAppearance( LLMessageSystem* mesgsys )
     }
     else
     {
-        LL_INFOS("Avatar") << "Processing appearance message for " << getID() << ", version " << thisAppearanceVersion << LL_ENDL;
+        LL_INFOS("Avatar") << "Processing appearance message for " << getID() << ", version " << thisAppearanceVersion
+                           << " repeated: " << mNumSameCOFVersion << LL_ENDL;
     }
-
+    if (mLastUpdateReceivedCOFVersion == thisAppearanceVersion)
+    {
+        mNumSameCOFVersion++;
+    }
+    else {
+        if (mNumSameCOFVersion > 2)
+        {
+            setParticleSource(sCloud, getID());
+            mFullyLoaded = FALSE;
+            mPreviousFullyLoaded    = FALSE;
+            mFullyLoadedInitialized = FALSE;
+            updateRezzedStatusTimers(1);
+            updateRuthTimer(true);
+        }
+        mNumSameCOFVersion = 0;
+    }
     // Note:
     // locally the COF is maintained via LLInventoryModel::accountForUpdate
     // which is called from various places.  This should match the simhost's
@@ -10800,7 +10823,8 @@ void LLVOAvatar::applyParsedAppearanceMessage(LLAppearanceMessageContents& conte
 
     updateMeshTextures();
     if (getRezzedStatus() == 3)
-    updateMeshVisibility();
+        updateMeshVisibility();
+    idleUpdateLoadingEffect();
 }
 
 LLViewerTexture* LLVOAvatar::getBakedTexture(const U8 te)

@@ -1281,6 +1281,8 @@ public:
     // COF version of last appearance message received for this av.
     S32 mLastUpdateReceivedCOFVersion;
 
+    S32 mNumSameCOFVersion;
+
 /**                    Diagnostics
  **                                                                            **
  *******************************************************************************/
