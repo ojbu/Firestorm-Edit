@@ -2194,10 +2194,6 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - create or missing");
         make_request = false;
     }
-    else if (forSculpt())
-    {
-        desired_discard = 0;
-    }
     else if (current_discard < 0)
     {
         make_request = true; // This is here only to break from the if else chain, knowing all remaining require the opposite
@@ -2256,6 +2252,13 @@ bool LLViewerFetchedTexture::updateFetch()
     //    make_request = false;
     //    switchToCachedImage(); //use the cached raw data first
     //}
+
+    if (forSculpt())
+    {
+        desired_discard = 0;
+        if (current_discard != desired_discard)
+            make_request = true;
+    }
 
     if (make_request)
     {

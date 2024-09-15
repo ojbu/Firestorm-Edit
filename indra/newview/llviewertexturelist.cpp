@@ -1181,9 +1181,7 @@ F32 LLViewerTextureList::updateBoostImagesFetchTextures(F32 max_time)
         test_count++;
         if (timer.getElapsedTimeF32() > max_time)
         {
-            LL_WARNS() << "Boosted count: " << (S32) imagep->mBoostLoaded << " id: " << imagep->getID()
-                       << " getDontDiscard: " << imagep->getDontDiscard() << " test_count: " << test_count
-                << LL_ENDL;
+
             break;
         }
     }
