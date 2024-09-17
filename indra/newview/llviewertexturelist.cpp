@@ -1210,6 +1210,7 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     // update N textures at beginning of mImageList
     static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");       // default: 32
     F32 update_count = mUUIDMap.size() / 50;
+    update_count = llmax( (F32)MIN_UPDATE_COUNT, update_count);
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vtluift - copy");
 
