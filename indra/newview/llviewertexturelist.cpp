@@ -1140,8 +1140,11 @@ F32 LLViewerTextureList::updateBoostImagesFetchTextures(F32 max_time)
     entries_list_t                                         entries;
 
     // update N textures at beginning of mImageList
+    static const U32 MAX_REGION_TSIZE = gSavedSettings.getU32("RegionTextureSize");
+    const F32 max_region_vsize = MAX_REGION_TSIZE * MAX_REGION_TSIZE;
     static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");  // default: 32
-    S32 update_count = llmax( MIN_UPDATE_COUNT, mUUIDMap.size() / 100);
+    F32 update_count = mUUIDMap.size() / 50;
+    update_count = llmax(MIN_UPDATE_COUNT, update_count);
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vtluift - copy");
@@ -1158,9 +1161,14 @@ F32 LLViewerTextureList::updateBoostImagesFetchTextures(F32 max_time)
 
             if (iter->second->getGLTexture() && iter->second->getNumRefs() > 1)
             {
-                if ((iter->second->getBoostLevel() > LLGLTexture::BOOST_NONE &&
+                if ((iter->second->getBoostLevel() == LLGLTexture::LLGLTexture::BOOST_TERRAIN
+                    && iter->second->getMaxVirtualSize() < max_region_vsize) ||
+                    (iter->second->getBoostLevel() > LLGLTexture::BOOST_NONE &&
                      iter->second->getBoostLevel() <= LLGLTexture::BOOST_MAX_LEVEL)
-                    && (iter->second->mBoostLoaded < 1 || (iter->second->forSculpt())))
+                    && (iter->second->mBoostLoaded < 1 || (iter->second->forSculpt() ||
+                        iter->second->getDiscardLevel() != iter->second->getDesiredDiscardLevel() ||
+                          iter->second->getDiscardLevel() < 0))
+                    )
                     entries.push_back(iter->second);
             }
             ++iter;
@@ -1172,16 +1180,15 @@ F32 LLViewerTextureList::updateBoostImagesFetchTextures(F32 max_time)
     LLTimer timer;
 
     LLPointer<LLViewerTexture> last_imagep = nullptr;
-    U32                        test_count  = 0;
     for (auto &imagep : entries)
     {
+        if (imagep->getFTType() == FTT_SERVER_BAKE || imagep->getBoostLevel() == LLGLTexture::BOOST_TERRAIN)
+            updateImageDecodePriority(imagep);
         imagep->updateFetch();
-        
+
         last_imagep = imagep;
-        test_count++;
         if (timer.getElapsedTimeF32() > max_time)
         {
-
             break;
         }
     }
@@ -1202,14 +1209,13 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
 
     // update N textures at beginning of mImageList
     static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");       // default: 32
-    S32 update_count = llmax( MIN_UPDATE_COUNT, mUUIDMap.size() / 100);
-
+    F32 update_count = mUUIDMap.size() / 50;
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vtluift - copy");
 
         // copy entries out of UUID map for updating
         uuid_map_t::iterator initial_iter = mUUIDMap.upper_bound(mLastUpdateKey);
-        uuid_map_t::iterator iter = initial_iter;
+        uuid_map_t::iterator iter(initial_iter);
         while (entries.size() <= update_count)
         {
             if (iter == mUUIDMap.end())
@@ -1254,7 +1260,7 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     {
         if (pair.second->getGLTexture() && pair.second->getNumRefs() > 1)
         {
-            if (pair.second->isActive() && (pair.second->hasFetcher() || pair.second->hasCallbacks()))
+            if (pair.second->isActive() && (pair.second->isFetching() || pair.second->hasFetcher() || pair.second->hasCallbacks()))
                 pair.second->updateFetch();
         }
     }

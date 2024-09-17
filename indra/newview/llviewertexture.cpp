@@ -2225,7 +2225,9 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Camera has moved in last 5 frames");
         make_request = false;
     }
-    else if (mLastTimeUpdated.getElapsedTimeF32() < (LLViewerTexture::sDesiredDiscardBias * (1 + (current_discard < desired_discard))) && LLViewerTexture::sDesiredDiscardBias < 6 && !forParticle())
+    else if (mLastTimeUpdated.getElapsedTimeF32() <
+        (llmax(gTextureList.getNumImages() / 2000, 1) + (LLViewerTexture::sDesiredDiscardBias * (1 + (current_discard < desired_discard))))
+        && LLViewerTexture::sDesiredDiscardBias < 6 && !forParticle())
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - Texture was updated recently");
         make_request = false;
@@ -2253,7 +2255,7 @@ bool LLViewerFetchedTexture::updateFetch()
     //    switchToCachedImage(); //use the cached raw data first
     //}
 
-    if (forSculpt())
+    if (forSculpt() || getBoostLevel() == LLGLTexture::BOOST_SCULPTED)
     {
         desired_discard = 0;
         if (current_discard != desired_discard)
@@ -2323,7 +2325,7 @@ bool LLViewerFetchedTexture::updateFetch()
                        << " Current: " << current_discard << " Current Size: " << mGLTexturep->getWidth(current_discard) << " x "
                        << mGLTexturep->getHeight(current_discard) << " previous: " << (S32) mRequestedDiscardLevel
                        << " Desired: " << desired_discard << " mFaceList->size(): " << (S32) mFaceList->size()
-                       << " needsAux(): " << (S32) needsAux() << " getFTType(): " << getFTType()
+                       << " needsAux(): " << (S32) needsAux() << " getFTType(): " << getFTType() << " forSculpt(): " << forSculpt()
                        << " mForceToSaveRawImage: " << mForceToSaveRawImage << " mBoostLevel: " << mBoostLevel
                        << " mMaxVirtualSize:" << (S32)mMaxVirtualSize
                        << " fetch_request_discard: " << (S32) fetch_request_discard << " sDesiredDiscardBias: " << LLViewerTexture::sDesiredDiscardBias
