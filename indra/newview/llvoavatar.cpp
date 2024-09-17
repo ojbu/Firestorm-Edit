@@ -9314,7 +9314,7 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
     {
         mFullyLoadedTimer.reset();
     }
-    bool attachments_ready = (mFullyLoadedInitialized && total_attachments > 0 &&
+    bool attachments_ready = (mFullyLoadedInitialized && mNumSameCOFVersion > 0 &&
                               loaded_attachments == total_attachments && isFullyTextured());
     
     F32 attachment_check_delay = llmax(4.0f, gTextureList.getNumImages() / (100 * gFPSClamped));
@@ -9350,10 +9350,6 @@ BOOL LLVOAvatar::processFullyLoadedChange(bool loading)
     if (!mPreviousFullyLoaded && !loading && mFullyLoaded)
     {
         debugAvatarRezTime("AvatarRezNotification","fully loaded");
-    }
-    if (!mFullyLoaded && mNumSameCOFVersion > 2)
-    {
-        LL_WARNS() << "Avatar loading failure: " << getFullname() << " - " << getID() << LL_ENDL;
     }
 
     // did our loading state "change" from last call?
@@ -10600,8 +10596,8 @@ void LLVOAvatar::processAvatarAppearance( LLMessageSystem* mesgsys )
     }
     else
     {
-        LL_INFOS("Avatar") << "Processing appearance message for " << getID() << ", version " << thisAppearanceVersion
-                           << " repeated: " << mNumSameCOFVersion << LL_ENDL;
+        LL_INFOS("Avatar") << "Processing appearance message for " << getID() << " last: " << mLastUpdateReceivedCOFVersion << " this: "
+                           << thisAppearanceVersion << " repeated: " << mNumSameCOFVersion << " mFullyLoaded: " << (S32)mFullyLoaded << LL_ENDL;
     }
     if (mLastUpdateReceivedCOFVersion == thisAppearanceVersion)
     {
