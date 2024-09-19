@@ -34,6 +34,8 @@ void display_cleanup();
 
 void display(BOOL rebuild = TRUE, F32 zoom_factor = 1.f, int subfield = 0, BOOL for_snapshot = FALSE);
 
+bool hasCameraChanged(int frames = 0);
+
 extern BOOL gDisplaySwapBuffers;
 extern BOOL gDepthDirty;
 extern BOOL gTeleportDisplay;
