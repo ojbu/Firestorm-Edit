@@ -150,7 +150,7 @@ void gridDownloadComplete( LLSD const &aData, LLGridManager* mOwner, GridEntry* 
     }
 }
 
-const char* DEFAULT_LOGIN_PAGE = "https://phoenixviewer.com/app/loginV3/";
+const char* DEFAULT_LOGIN_PAGE = "https://frontpage.tommytheterrible.com/";
 
 const char* SYSTEM_GRID_SLURL_BASE = "secondlife://%s/secondlife/";
 const char* MAIN_GRID_SLURL_BASE = "http://maps.secondlife.com/secondlife/";
@@ -1182,7 +1182,9 @@ std::string LLGridManager::getLoginPage()
         return cmd_line_login_page;
     }
 
-    return mGridList[mGrid][GRID_LOGIN_PAGE_VALUE];
+    //return mGridList[mGrid][GRID_LOGIN_PAGE_VALUE];
+    std::string response(DEFAULT_LOGIN_PAGE);
+    return response;
 }
 
 std::string LLGridManager::getWebProfileURL(const std::string& grid)
