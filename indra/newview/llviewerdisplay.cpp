@@ -126,13 +126,13 @@ LLFrameTimer gRecentFPSTime;
 LLFrameTimer gRecentMemoryTime;
 LLFrameTimer gAssetStorageLogTime;
 
-std::vector<int32_t> frame_sort_counts;
-std::vector<int32_t> frame_text_counts;
-std::vector<int32_t> frame_obj_counts;
-std::vector<int32_t> frame_draw_counts;
-std::vector<int32_t> frame_clear_counts;
-std::vector<int32_t> frame_secpart_counts;
-std::vector<int32_t> frame_geom_counts;
+std::vector<F32>     frame_sort_counts;
+std::vector<F32>     frame_text_counts;
+std::vector<F32>     frame_obj_counts;
+std::vector<F32>     frame_draw_counts;
+std::vector<F32>     frame_clear_counts;
+std::vector<F32>     frame_secpart_counts;
+std::vector<F32>     frame_geom_counts;
 
 // Rendering stuff
 void pre_show_depth_buffer();
@@ -827,14 +827,14 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             gPipeline.updateGeom(max_geom_update_time);
             stop_glerror();
         }
-        int32_t obj_time = (int32_t)objtimer.getElapsedTimeF32() * 1000000;
+        F32 obj_time = objtimer.getElapsedTimeF32() * 1000000;
         frame_obj_counts.push_back(obj_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
-            float max_texttime     = (float) *std::max_element(frame_obj_counts.begin(), frame_obj_counts.end()) / 1000;
-            float min_texttime     = (float) *std::min_element(frame_obj_counts.begin(), frame_obj_counts.end()) / 1000;
-            float average_texttime = (float) std::reduce(std::execution::par_unseq, frame_obj_counts.begin(), frame_obj_counts.end()) /
-                                     frame_obj_counts.size() / 1000;
+            F32 max_texttime     = (F32) *std::max_element(frame_obj_counts.begin(), frame_obj_counts.end()) / 1000;
+            F32 min_texttime     = (F32) *std::min_element(frame_obj_counts.begin(), frame_obj_counts.end()) / 1000;
+            F32 average_texttime = (F32)(std::reduce(std::execution::par_unseq, frame_obj_counts.begin(), frame_obj_counts.end()) /
+                                     frame_obj_counts.size() / 1000);
             LL_WARNS() << "O frames: " << frame_obj_counts.size() << " Max : " << max_texttime << " min : " << min_texttime
                        << " avg : " << average_texttime << LL_ENDL;
             frame_obj_counts.clear();
@@ -952,14 +952,14 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             }
         }
 
-        int32_t text_time = (int32_t)texttimer.getElapsedTimeF32() * 1000000;
+        F32 text_time = (F32)texttimer.getElapsedTimeF32() * 1000000;
         frame_text_counts.push_back(text_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
-            float max_texttime = (float)*std::max_element(frame_text_counts.begin(), frame_text_counts.end()) / 1000;
-            float min_texttime = (float)*std::min_element(frame_text_counts.begin(), frame_text_counts.end()) / 1000;
-            float average_texttime =
-                (float)std::reduce(std::execution::par_unseq, frame_text_counts.begin(), frame_text_counts.end()) / frame_text_counts.size() / 1000;
+            F32 max_texttime = (F32)*std::max_element(frame_text_counts.begin(), frame_text_counts.end()) / 1000;
+            F32 min_texttime = (F32)*std::min_element(frame_text_counts.begin(), frame_text_counts.end()) / 1000;
+            F32 average_texttime = (F32)(std::reduce(std::execution::par_unseq, frame_text_counts.begin(), frame_text_counts.end()) /
+                                   frame_text_counts.size() / 1000);
             LL_WARNS() << "T frames: " << frame_text_counts.size() << " Max : " << max_texttime << " min : " << min_texttime
                        << " avg : " << average_texttime << LL_ENDL;
             frame_text_counts.clear();
@@ -1130,15 +1130,15 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             gGL.setColorMask(true, true);
             gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance(), true);
         }
-        int32_t geom_time = (int32_t)geomtimer.getElapsedTimeF32() * 1000000;
+        F32 geom_time = geomtimer.getElapsedTimeF32() * 1000000;
         frame_geom_counts.push_back(geom_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
-            float max_geom_time = (float) *std::max_element(frame_geom_counts.begin(), frame_geom_counts.end()) / 1000;
-            float min_geom_time = (float) *std::min_element(frame_geom_counts.begin(), frame_geom_counts.end()) / 1000;
-            float average_geom_time =
-                (float) std::reduce(std::execution::par_unseq, frame_geom_counts.begin(), frame_geom_counts.end()) /
-                frame_geom_counts.size() / 1000;
+            F32 max_geom_time = (F32) *std::max_element(frame_geom_counts.begin(), frame_geom_counts.end()) / 1000;
+            F32 min_geom_time = (F32) *std::min_element(frame_geom_counts.begin(), frame_geom_counts.end()) / 1000;
+            F32 average_geom_time =
+                (F32) (std::reduce(std::execution::par_unseq, frame_geom_counts.begin(), frame_geom_counts.end()) /
+                frame_geom_counts.size() / 1000);
             LL_WARNS() << "Render frames: " << frame_geom_counts.size() << " Max : " << max_geom_time << " min : " << min_geom_time
                        << " avg : " << average_geom_time << LL_ENDL;
             frame_geom_counts.clear();
@@ -1186,15 +1186,15 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
         gPipeline.clearReferences();
 
-        int32_t render_time = (int32_t)rendertimer.getElapsedTimeF32() * 1000000;
+        F32 render_time = rendertimer.getElapsedTimeF32() * 1000000;
         frame_secpart_counts.push_back(render_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
-            float max_rendertime  = (float) *std::max_element(frame_secpart_counts.begin(), frame_secpart_counts.end()) / 1000;
-            float min_rendertime = (float) *std::min_element(frame_secpart_counts.begin(), frame_secpart_counts.end()) / 1000;
-            float average_rendertime =
-                (float) std::reduce(std::execution::par_unseq, frame_secpart_counts.begin(), frame_secpart_counts.end()) /
-                frame_secpart_counts.size() / 1000;
+            F32 max_rendertime  = (F32) *std::max_element(frame_secpart_counts.begin(), frame_secpart_counts.end()) / 1000;
+            F32 min_rendertime = (F32) *std::min_element(frame_secpart_counts.begin(), frame_secpart_counts.end()) / 1000;
+            F32 average_rendertime =
+                (F32)(std::reduce(std::execution::par_unseq, frame_secpart_counts.begin(), frame_secpart_counts.end()) /
+                frame_secpart_counts.size() / 1000);
             LL_WARNS() << "Unbind frames: " << frame_secpart_counts.size() << " Max : " << max_rendertime << " min : " << min_rendertime
                        << " avg : " << average_rendertime << LL_ENDL;
             frame_secpart_counts.clear();
@@ -1218,14 +1218,14 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         LLGLSLShader::finishProfile();
     }
     
-    int32_t draw_time = (int32_t)drawtimer.getElapsedTimeF32() * 1000000;
+    F32 draw_time = drawtimer.getElapsedTimeF32() * 1000000;
     frame_draw_counts.push_back(draw_time);
     if (gRecentFrameCount == 1 && current_frame > 500)
     {
-        float max_drawtime     = (float) *std::max_element(frame_draw_counts.begin(), frame_draw_counts.end()) / 1000;
-        float min_drawtime     = (float) *std::min_element(frame_draw_counts.begin(), frame_draw_counts.end()) / 1000;
-        float average_drawtime = (float) std::reduce(std::execution::par_unseq, frame_draw_counts.begin(), frame_draw_counts.end()) /
-                                 frame_draw_counts.size() / 1000;
+        F32 max_drawtime     = (F32) *std::max_element(frame_draw_counts.begin(), frame_draw_counts.end()) / 1000;
+        F32 min_drawtime     = (F32) *std::min_element(frame_draw_counts.begin(), frame_draw_counts.end()) / 1000;
+        F32 average_drawtime = (F32)(std::reduce(std::execution::par_unseq, frame_draw_counts.begin(), frame_draw_counts.end()) /
+                                 frame_draw_counts.size() / 1000);
         LL_WARNS() << "D frames: " << frame_draw_counts.size() << " Max : " << max_drawtime << " min : " << min_drawtime
                    << " avg : " << average_drawtime << LL_ENDL;
         LL_WARNS() << "Frame time: " << gFrameIntervalSeconds.value() << LL_ENDL;
