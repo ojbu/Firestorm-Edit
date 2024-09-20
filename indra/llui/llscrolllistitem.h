@@ -158,6 +158,7 @@ private:
     bool    mHighlighted;
     S32     mHoverIndex;
     S32     mSelectedIndex;
+    bool    mFlaggedDead = false;
     bool    mEnabled;
     void*   mUserdata;
     LLSD    mItemValue;

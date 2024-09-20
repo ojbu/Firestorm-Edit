@@ -118,7 +118,7 @@ BDFloaterPoseCreator::~BDFloaterPoseCreator()
 {
 }
 
-BOOL BDFloaterPoseCreator::postBuild()
+bool BDFloaterPoseCreator::postBuild()
 {
     std::string pathname = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, "animations");
     if (!gDirUtilp->fileExists(pathname))
@@ -186,7 +186,7 @@ BOOL BDFloaterPoseCreator::postBuild()
     //mKeyframeScroll->refreshLineHeight();
     //mTimelineScroll->refreshLineHeight();
 
-    return TRUE;
+    return true;
 }
 
 void BDFloaterPoseCreator::draw()
@@ -231,7 +231,7 @@ void BDFloaterPoseCreator::onKeyframesRebuild()
     mKeyframeScroll->clearRows();
     mTimelineScroll->clearRows();
 
-    for(S32 joint_idx = 0; joint_idx < joint_list->getNumJointMotions(); joint_idx++)
+    for(U32 joint_idx = 0; joint_idx < joint_list->getNumJointMotions(); joint_idx++)
     {
         LLKeyframeMotion::JointMotion* joint_motion = joint_list->getJointMotion(joint_idx);
         if (!joint_motion)
@@ -265,7 +265,7 @@ void BDFloaterPoseCreator::onKeyframesRebuild()
             LLQuaternion rot_quat = rot_key.second.mRotation;
             rot_quat.getEulerAngles(&roll, &pitch, &yaw);
 
-            S32 time_frames = (S32)ll_round(rot_key.second.mTime / FRAMETIME, 1.f);
+            F32 time_frames = ll_round(rot_key.second.mTime / FRAMETIME, 1.f);
 
             if (col_slider)
             {
@@ -277,7 +277,7 @@ void BDFloaterPoseCreator::onKeyframesRebuild()
         for (auto& pos_key : pos_curve.mKeys)
         {
             LLVector3 pos = pos_key.second.mPosition;
-            S32 time_frames = (S32)ll_round(pos_key.second.mTime / FRAMETIME, 1.f);
+            F32 time_frames = ll_round(pos_key.second.mTime / FRAMETIME, 1.f);
 
             if (col_slider)
             {
@@ -289,7 +289,7 @@ void BDFloaterPoseCreator::onKeyframesRebuild()
         for (auto& scale_key : scale_curve.mKeys)
         {
             LLVector3 scale = scale_key.second.mScale;
-            S32 time_frames = (S32)ll_round(scale_key.second.mTime / FRAMETIME, 1.f);
+            F32 time_frames = ll_round(scale_key.second.mTime / FRAMETIME, 1.f);
 
             if (col_slider)
             {
@@ -310,7 +310,7 @@ void BDFloaterPoseCreator::onKeyframeResetAll()
     if (!joint_list)
         return;
 
-    for (S32 joint_idx = 0; joint_idx < joint_list->getNumJointMotions(); joint_idx++)
+    for (U32 joint_idx = 0; joint_idx < joint_list->getNumJointMotions(); joint_idx++)
     {
         LLKeyframeMotion::JointMotion* joint_motion = joint_list->getJointMotion(joint_idx);
         if (!joint_motion)
@@ -417,7 +417,7 @@ void BDFloaterPoseCreator::onKeyframeRefresh()
             LLQuaternion rot_quat = rot_key.second.mRotation;
             rot_quat.getEulerAngles(&roll, &pitch, &yaw);
 
-            S32 time_frames = (S32)ll_round(rot_key.second.mTime / FRAMETIME, 1.f);
+            F32 time_frames = ll_round(rot_key.second.mTime / FRAMETIME, 1.f);
 
             LLSD row;
             row["columns"][0]["column"] = "time";
@@ -444,7 +444,7 @@ void BDFloaterPoseCreator::onKeyframeRefresh()
         for (auto& pos_key : pos_curve.mKeys)
         {
             LLVector3 pos = pos_key.second.mPosition;
-            S32 time_frames = (S32)ll_round(pos_key.second.mTime / FRAMETIME, 1.f);
+            F32 time_frames = ll_round(pos_key.second.mTime / FRAMETIME, 1.f);
             LLSD row;
             row["columns"][0]["column"] = "time";
             row["columns"][0]["value"] = ll_round(time_frames, 1.f);
@@ -470,7 +470,7 @@ void BDFloaterPoseCreator::onKeyframeRefresh()
         for (auto& scale_key : scale_curve.mKeys)
         {
             LLVector3 scale = scale_key.second.mScale;
-            S32 time_frames = (S32)ll_round(scale_key.second.mTime / FRAMETIME, 1.f);
+            F32 time_frames = ll_round(scale_key.second.mTime / FRAMETIME, 1.f);
             LLSD row;
             row["columns"][0]["column"] = "time";
             row["columns"][0]["value"] = ll_round(time_frames, 1.f);
@@ -595,7 +595,7 @@ void BDFloaterPoseCreator::onKeyframeAdd(F32 time, LLJoint* joint)
             //BD - Increase the key number since we are adding another key.
             joint_motion->mRotationCurve.mNumKeys++;
 
-            joint_motion->mRotationCurve.mKeys[joint_motion->mRotationCurve.mNumKeys] = rotation_key;
+            joint_motion->mRotationCurve.mKeys[(F32)joint_motion->mRotationCurve.mNumKeys] = rotation_key;
 
             LLJointState* joint_state = gDragonAnimator.mPoseCreatorMotion->findJointState(joint);
             if (joint_state->getUsage() ^ LLJointState::ROT)
@@ -611,7 +611,7 @@ void BDFloaterPoseCreator::onKeyframeAdd(F32 time, LLJoint* joint)
             //BD - Increase the key number since we are adding another key.
             joint_motion->mPositionCurve.mNumKeys++;
 
-            joint_motion->mPositionCurve.mKeys[joint_motion->mPositionCurve.mNumKeys] = position_key;
+            joint_motion->mPositionCurve.mKeys[(F32)joint_motion->mPositionCurve.mNumKeys] = position_key;
 
             LLJointState* joint_state = gDragonAnimator.mPoseCreatorMotion->findJointState(joint);
             if (joint_state->getUsage() ^ LLJointState::POS)
@@ -627,7 +627,7 @@ void BDFloaterPoseCreator::onKeyframeAdd(F32 time, LLJoint* joint)
             //BD - Increase the key number since we are adding another key.
             joint_motion->mScaleCurve.mNumKeys++;
 
-            joint_motion->mScaleCurve.mKeys[joint_motion->mScaleCurve.mNumKeys] = scale_key;
+            joint_motion->mScaleCurve.mKeys[(F32)joint_motion->mScaleCurve.mNumKeys] = scale_key;
 
             LLJointState* joint_state = gDragonAnimator.mPoseCreatorMotion->findJointState(joint);
             if (joint_state->getUsage() ^ LLJointState::SCALE)
@@ -667,7 +667,7 @@ void BDFloaterPoseCreator::onKeyframeAdd()
 
         LLKeyframeMotion::JointMotion* joint_motion = joint_list->getJointMotion(joint->getJointNum());
         S32 selected_idx = 0;
-        S32 count = 1;
+        F32 count = 1;
         S32 keys = 1;
         F32 time = FRAMETIME;
         if (item)
@@ -682,7 +682,7 @@ void BDFloaterPoseCreator::onKeyframeAdd()
                 //     This also kinda determines if this is the first keyframe or not. If we can't find a previous
                 //     entry we assume its the first keyframe, so simply use 1.f.
                 if (joint_motion->mRotationCurve.mNumKeys > 0)
-                    time = joint_motion->mRotationCurve.mKeys[joint_motion->mRotationCurve.mNumKeys].mTime + FRAMETIME;
+                    time = joint_motion->mRotationCurve.mKeys[(F32)joint_motion->mRotationCurve.mNumKeys].mTime + FRAMETIME;
 
                 //BD - Create a rotation key and put it into the rotation curve.
                 LLKeyframeMotion::RotationKey rotation_key = LLKeyframeMotion::RotationKey(ll_round(time, 0.001f), joint->getTargetRotation());
@@ -690,7 +690,7 @@ void BDFloaterPoseCreator::onKeyframeAdd()
                 //BD - Increase the key number since we are adding another key.
                 joint_motion->mRotationCurve.mNumKeys++;
 
-                joint_motion->mRotationCurve.mKeys[joint_motion->mRotationCurve.mNumKeys] = rotation_key;
+                joint_motion->mRotationCurve.mKeys[(F32)joint_motion->mRotationCurve.mNumKeys] = rotation_key;
             }
             //BD - Conversely put the key at the start of the list if CTRL is held while adding a key.
             else if (gKeyboard->currentMask(TRUE) == MASK_CONTROL)
@@ -762,7 +762,7 @@ void BDFloaterPoseCreator::onKeyframeAdd()
                 //     This also kinda determines if this is the first keyframe or not. If we can't find a previous
                 //     entry we assume its the first keyframe, so simply use 1.f.
                 if (joint_motion->mPositionCurve.mNumKeys > 0)
-                    time = joint_motion->mPositionCurve.mKeys[joint_motion->mPositionCurve.mNumKeys].mTime + FRAMETIME;
+                    time = joint_motion->mPositionCurve.mKeys[(F32)joint_motion->mPositionCurve.mNumKeys].mTime + FRAMETIME;
 
                 //BD - Create a position key and put it into the position curve.
                 LLKeyframeMotion::PositionKey position_key = LLKeyframeMotion::PositionKey(ll_round(time, 0.001f), joint->getTargetPosition());
@@ -770,7 +770,7 @@ void BDFloaterPoseCreator::onKeyframeAdd()
                 //BD - Increase the key number since we are adding another key.
                 joint_motion->mPositionCurve.mNumKeys++;
 
-                joint_motion->mPositionCurve.mKeys[joint_motion->mPositionCurve.mNumKeys] = position_key;
+                joint_motion->mPositionCurve.mKeys[(F32)joint_motion->mPositionCurve.mNumKeys] = position_key;
             }
             //BD - Conversely put the key at the start of the list if CTRL is held while adding a key.
             else if (gKeyboard->currentMask(TRUE) == MASK_CONTROL)
@@ -845,7 +845,7 @@ void BDFloaterPoseCreator::onKeyframeAdd()
                 //     This also kinda determines if this is the first keyframe or not. If we can't find a previous
                 //     entry we assume its the first keyframe, so simply use 1.f.
                 if (joint_motion->mScaleCurve.mNumKeys > 0)
-                    time = joint_motion->mScaleCurve.mKeys[joint_motion->mScaleCurve.mNumKeys].mTime + FRAMETIME;
+                    time = joint_motion->mScaleCurve.mKeys[(F32)joint_motion->mScaleCurve.mNumKeys].mTime + FRAMETIME;
 
                 //BD - Create a scale key and put it into the scale curve.
                 LLKeyframeMotion::ScaleKey scale_key = LLKeyframeMotion::ScaleKey(ll_round(time, 0.001f), joint->getScale());
@@ -853,7 +853,7 @@ void BDFloaterPoseCreator::onKeyframeAdd()
                 //BD - Increase the key number since we are adding another key.
                 joint_motion->mScaleCurve.mNumKeys++;
 
-                joint_motion->mScaleCurve.mKeys[joint_motion->mScaleCurve.mNumKeys] = scale_key;
+                joint_motion->mScaleCurve.mKeys[(F32)joint_motion->mScaleCurve.mNumKeys] = scale_key;
             }
             //BD - Conversely put the key at the start of the list if CTRL is held while adding a key.
             else if (gKeyboard->currentMask(TRUE) == MASK_CONTROL)
@@ -955,7 +955,7 @@ void BDFloaterPoseCreator::onKeyframeRemove()
     S32 idx = mModifierTabs->getCurrentPanelIndex();
     S32 si = mKeyframeScroll->getFirstSelected()->getColumn(1)->getValue().asInteger();
     S32 usage = joint_state->getUsage();
-    S32 count = 1;
+    F32 count = 1;
     S32 last_selected = mKeyframeScroll->getFirstSelectedIndex();
 
     if (idx == 0)
@@ -970,7 +970,7 @@ void BDFloaterPoseCreator::onKeyframeRemove()
             if((S32)it.first != si)
             {
                 rot_curve.mKeys[count] = it.second;
-                rot_curve.mNumKeys = count;
+                rot_curve.mNumKeys = (S32)count;
                 count++;
             }
         }
@@ -994,7 +994,7 @@ void BDFloaterPoseCreator::onKeyframeRemove()
             if ((S32)it.first != si)
             {
                 pos_curve.mKeys[count] = it.second;
-                pos_curve.mNumKeys = count;
+                pos_curve.mNumKeys = (S32)count;
                 count++;
             }
         }
@@ -1018,7 +1018,7 @@ void BDFloaterPoseCreator::onKeyframeRemove()
             if ((S32)it.first != si)
             {
                 scale_curve.mKeys[count] = it.second;
-                scale_curve.mNumKeys = count;
+                scale_curve.mNumKeys = (S32)count;
                 count++;
             }
         }
@@ -1124,11 +1124,11 @@ void BDFloaterPoseCreator::onEditAnimationInfo(const LLSD& param)
     std::string msg = param.asString();
     if (msg == "ease_in")
     {
-        joint_list->mEaseInDuration = getChild<LLUICtrl>("ease_in")->getValue().asReal();
+        joint_list->mEaseInDuration = (F32)getChild<LLUICtrl>("ease_in")->getValue().asReal();
     }
     else if (msg == "ease_out")
     {
-        joint_list->mEaseOutDuration = getChild<LLUICtrl>("ease_out")->getValue().asReal();
+        joint_list->mEaseOutDuration = (F32)getChild<LLUICtrl>("ease_out")->getValue().asReal();
     }
     else if (msg == "duration_auto")
     {
@@ -1137,7 +1137,7 @@ void BDFloaterPoseCreator::onEditAnimationInfo(const LLSD& param)
     }
     else if (msg == "duration")
     {
-        joint_list->mDuration = getChild<LLUICtrl>("keyframe_duration")->getValue().asReal();
+        joint_list->mDuration = (F32)getChild<LLUICtrl>("keyframe_duration")->getValue().asReal();
     }
     else if (msg == "loop")
     {
@@ -1145,11 +1145,11 @@ void BDFloaterPoseCreator::onEditAnimationInfo(const LLSD& param)
     }
     else if (msg == "loop_in")
     {
-        joint_list->mLoopInPoint = getChild<LLUICtrl>("loop_in")->getValue().asReal();
+        joint_list->mLoopInPoint = (F32)getChild<LLUICtrl>("loop_in")->getValue().asReal();
     }
     else if (msg == "loop_out")
     {
-        joint_list->mLoopOutPoint = getChild<LLUICtrl>("loop_out")->getValue().asReal();
+        joint_list->mLoopOutPoint = (F32)getChild<LLUICtrl>("loop_out")->getValue().asReal();
     }
     else if (msg == "priority")
     {
@@ -1808,12 +1808,12 @@ void BDFloaterPoseCreator::onJointSet(LLUICtrl* ctrl, const LLSD& param)
 
     //BD - Neat yet quick and direct way of rotating our bones.
     //     No more need to include bone rotation orders.
-    F32 val = ctrl->getValue().asReal();
+    F32 val = (F32)ctrl->getValue().asReal();
     S32 axis = param.asInteger();
     LLScrollListCell* cell[3] = { item->getColumn(COL_ROT_X), item->getColumn(COL_ROT_Y), item->getColumn(COL_ROT_Z) };
     LLQuaternion rot_quat = joint->getTargetRotation();
     LLMatrix3 rot_mat;
-    F32 old_value = cell[axis]->getValue().asReal();
+    F32 old_value = (F32)cell[axis]->getValue().asReal();
     F32 new_value = val - old_value;
     LLVector3 vec3;
     S32 time = key_item ? key_item->getColumn(0)->getValue().asInteger() : 1;
@@ -1903,11 +1903,11 @@ void BDFloaterPoseCreator::onJointSet(LLUICtrl* ctrl, const LLSD& param)
     {
         LLJoint* mirror_joint = nullptr;
         std::string mirror_joint_name = joint->getName();
-        S32 idx = joint->getName().find("Left");
+        size_t idx = (S32)joint->getName().find("Left");
         if (idx != -1)
             mirror_joint_name.replace(idx, mirror_joint_name.length(), "Right");
 
-        idx = joint->getName().find("Right");
+        idx = (S32)joint->getName().find("Right");
         if (idx != -1)
             mirror_joint_name.replace(idx, mirror_joint_name.length(), "Left");
 
@@ -2013,7 +2013,7 @@ void BDFloaterPoseCreator::onJointPosSet(LLUICtrl* ctrl, const LLSD& param)
     //     Bones that can support position
     //     0, 9-37, 39-43, 45-59, 77, 97-107, 110, 112, 115, 117-121, 125, 128-129, 132
     //     as well as all attachment bones and collision volumes.
-    F32 val = ctrl->getValue().asReal();
+    F32 val = (F32)ctrl->getValue().asReal();
     LLScrollListCell* cell[3] = { item->getColumn(COL_POS_X), item->getColumn(COL_POS_Y), item->getColumn(COL_POS_Z) };
     LLVector3 vec3 = { F32(cell[VX]->getValue().asReal()),
                         F32(cell[VY]->getValue().asReal()),
@@ -2098,7 +2098,7 @@ void BDFloaterPoseCreator::onJointScaleSet(LLUICtrl* ctrl, const LLSD& param)
     if (!key_item)
         return;
 
-    F32 val = ctrl->getValue().asReal();
+    F32 val = (F32)ctrl->getValue().asReal();
     LLScrollListCell* cell[3] = { item->getColumn(COL_SCALE_X), item->getColumn(COL_SCALE_Y), item->getColumn(COL_SCALE_Z) };
     LLVector3 vec3 = { F32(cell[VX]->getValue().asReal()),
                         F32(cell[VY]->getValue().asReal()),
@@ -2218,7 +2218,7 @@ void BDFloaterPoseCreator::onJointRotPosScaleReset()
                         {
                             LLJoint* mirror_joint = nullptr;
                             std::string mirror_joint_name = joint->getName();
-                            S32 idx = joint->getName().find("Left");
+                            size_t idx = joint->getName().find("Left");
                             if (idx != -1)
                                 mirror_joint_name.replace(idx, mirror_joint_name.length(), "Right");
 
@@ -2322,7 +2322,7 @@ void BDFloaterPoseCreator::onJointRotationReset()
                 {
                     LLJoint* mirror_joint = nullptr;
                     std::string mirror_joint_name = joint->getName();
-                    S32 idx = joint->getName().find("Left");
+                    size_t idx = joint->getName().find("Left");
                     if (idx != -1)
                         mirror_joint_name.replace(idx, mirror_joint_name.length(), "Right");
 
@@ -2473,7 +2473,7 @@ void BDFloaterPoseCreator::onJointRotationRevert()
                 {
                     LLJoint* mirror_joint = nullptr;
                     std::string mirror_joint_name = joint->getName();
-                    S32 idx = joint->getName().find("Left");
+                    size_t idx = joint->getName().find("Left");
                     if (idx != -1)
                         mirror_joint_name.replace(idx, mirror_joint_name.length(), "Right");
 
@@ -2537,7 +2537,7 @@ void BDFloaterPoseCreator::onFlipPose()
         std::string mirror_joint_name = joint->getName();
         //BD - Attempt to find the "right" version of this bone first, we assume we always
         //     end up with the "left" version of a bone first.
-        S32 idx = joint->getName().find("Left");
+        size_t idx = joint->getName().find("Left");
         if (idx != -1)
             mirror_joint_name.replace(idx, mirror_joint_name.length(), "Right");
         //BD - Attempt to find the "right" version of this bone first, this is necessary
@@ -2711,7 +2711,7 @@ void BDFloaterPoseCreator::onJointSymmetrize()
             std::string mirror_joint_name = joint->getName();
             //BD - Attempt to find the "right" version of this bone, if we can't find it try
             //     the left version.
-            S32 idx = joint->getName().find("Left");
+            size_t idx = joint->getName().find("Left");
             if (idx != -1)
                 mirror_joint_name.replace(idx, mirror_joint_name.length(), "Right");
             idx = joint->getName().find("Right");
@@ -2960,14 +2960,14 @@ void BDFloaterPoseCreator::onCreateTempMotion()
     joint_states.reserve(134);
 
     mTempMotionList->mBasePriority = (LLJoint::JointPriority)getChild<LLUICtrl>("base_priority")->getValue().asInteger();
-    mTempMotionList->mDuration = getChild<LLUICtrl>("keyframe_duration")->getValue().asReal();
-    mTempMotionList->mEaseInDuration = getChild<LLUICtrl>("ease_in")->getValue().asReal();
-    mTempMotionList->mEaseOutDuration = getChild<LLUICtrl>("ease_out")->getValue().asReal();
+    mTempMotionList->mDuration = (F32)getChild<LLUICtrl>("keyframe_duration")->getValue().asReal();
+    mTempMotionList->mEaseInDuration = (F32)getChild<LLUICtrl>("ease_in")->getValue().asReal();
+    mTempMotionList->mEaseOutDuration = (F32)getChild<LLUICtrl>("ease_out")->getValue().asReal();
     mTempMotionList->mEmoteName = "";
     mTempMotionList->mHandPose = (LLHandMotion::eHandPose)getChild<LLUICtrl>("hand_poses")->getValue().asInteger();
     mTempMotionList->mLoop = true;
     mTempMotionList->mLoopInPoint = 0.0f;
-    mTempMotionList->mLoopOutPoint = getChild<LLUICtrl>("keyframe_duration")->getValue().asReal();
+    mTempMotionList->mLoopOutPoint = (F32)getChild<LLUICtrl>("keyframe_duration")->getValue().asReal();
     mTempMotionList->mMaxPriority = LLJoint::HIGHEST_PRIORITY;
 
     for (S32 i = 0; i <= ATTACHMENT_BONES; i++)
