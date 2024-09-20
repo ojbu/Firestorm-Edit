@@ -141,7 +141,7 @@ public:
     void setTextureListType(S32 tex_type) { mTextureListType = tex_type; }
     S32 getTextureListType() { return mTextureListType; }
 
-    void addTextureStats(F32 virtual_size, bool needs_gltexture = true) const;
+    bool addTextureStats(F32 virtual_size, bool needs_gltexture = true) const;
     void resetTextureStats();
     void setMaxVirtualSizeResetInterval(S32 interval)const {mMaxVirtualSizeResetInterval = interval;}
     void resetMaxVirtualSizeResetCounter()const {mMaxVirtualSizeResetCounter = mMaxVirtualSizeResetInterval;}
@@ -401,13 +401,13 @@ public:
 
     const std::string& getUrl() const {return mUrl;}
     //---------------
-    BOOL isDeleted() ;
-    BOOL isInactive() ;
-    BOOL isDeletionCandidate();
-    BOOL isActive();
+    bool isDeleted() ;
+    bool isInactive() ;
+    bool isDeletionCandidate();
+    bool isActive();
     void setDeletionCandidate() ;
     void setInactive(bool found) ;
-    BOOL getUseDiscard() const { return mUseMipMaps && !mDontDiscard; }
+    bool getUseDiscard() const { return mUseMipMaps && !mDontDiscard; }
     //---------------
 
     void setForSculpt();
@@ -416,7 +416,7 @@ public:
     BOOL forSculpt() const {return mForSculpt;}
     BOOL forHUD() const { return mForHUD; }
     BOOL forParticle() const { return mForParticle; }
-    BOOL isForSculptOnly() const;
+    bool isForSculptOnly() const;
 
     //raw image management
     LLImageRaw* getRawImage()const { return mRawImage ;}
@@ -497,9 +497,6 @@ protected:
     S32 mMinDiscardLevel;
     S8  mDesiredDiscardLevel;           // The discard level we'd LIKE to have - if we have it and there's space
     S8  mMinDesiredDiscardLevel;    // The minimum discard level we'd like to have
-
-    F32 mMaxFaceImportance; // Keep track of highest importance from faces for textures.
-    U32 mIncomingChangeBits; // Keep track of change in bits
 
     F32 mMaxFaceImportance; // Keep track of highest importance from faces for textures.
     U32 mIncomingChangeBits; // Keep track of change in bits

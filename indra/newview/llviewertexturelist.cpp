@@ -907,11 +907,6 @@ extern bool gCubeSnapshot;
 
 bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imagep)
 {
-    if (imagep->isInDebug() || imagep->isUnremovable())
-    {
-        //update_counter--;
-        return false;  // is in debug, ignore.
-    }
 
     llassert(!gCubeSnapshot);
 
@@ -947,12 +942,12 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
                     min_scale = llmax(min_scale * min_scale, 0.1f);
                     vsize /= min_scale;
                     bool is_anim = face->isState(LLFace::TEXTURE_ANIM);
-                    vsize *= llmax(pow((is_anim && in_frustum) * 2, 4), 1);
+                    vsize *= (float)llmax(pow((is_anim && in_frustum) * 2, 4), 1);
                     bool is_hud = face->isState(LLFace::HUD_RENDER);
                     for_particle = face->isState(LLFace::PARTICLE);
                     // Collect face's importance to total later for discard bias reductions
-                    importance = llmax(importance, face->getImportanceToCamera()) + (0.6 * (int) is_anim * (int) in_frustum) +
-                                 (1 * (int) is_hud) + (1 * (int) for_particle);
+                    importance = (float)(llmax(importance, face->getImportanceToCamera()) + (0.6 * (int) is_anim * (int) in_frustum) +
+                                 (1 * (int) is_hud) + (1 * (int) for_particle));
                     vsize = llmax(vsize * (int) !for_particle, (65536 * (int) for_particle)); // (256 * 256)
                     vsize = llmax(vsize * (int) !is_hud, (1048576 * (int) is_hud)); // (1024 * 1024)
                     face->setVirtualSize(vsize);
@@ -971,7 +966,7 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
     if (imagep->isForSculptOnly())
         assignImportance++;
     if (assignImportance < llmax(((LLViewerTexture::sDesiredDiscardBias - 1) * 0.20), 0))
-        assignSize /= llmax(pow((LLViewerTexture::sDesiredDiscardBias - 1), 4), 1);
+        assignSize /= (float)llmax(pow((LLViewerTexture::sDesiredDiscardBias - 1), 4), 1);
     // If the greatest virtual size is not -1, apply it and find out if a fetch is necessary (mMaxVirtualSize changed)
     if (assignSize >= 0)
         needs_fetch = imagep->addTextureStats(assignSize);
@@ -1045,19 +1040,6 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
     return needs_fetch && imagep->isActive();
 }
 
-void LLViewerTextureList::setDebugFetching(LLViewerFetchedTexture* tex, S32 debug_level)
-{
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
-    if(!tex->setDebugFetching(debug_level))
-    {
-        return;
-    }
-
-    const F32 DEBUG_PRIORITY = 100000.f;
-    removeImageFromList(tex);
-    tex->mMaxVirtualSize = DEBUG_PRIORITY;
-    addImageToList(tex);
-}
 
 F32 LLViewerTextureList::updateImagesCreateTextures(F32 max_time)
 {
@@ -1182,9 +1164,9 @@ F32 LLViewerTextureList::updateBoostImagesFetchTextures(F32 max_time)
 
     // update N textures at beginning of mImageList
     static const U32 MAX_REGION_TSIZE = gSavedSettings.getU32("RegionTextureSize");
-    const F32 max_region_vsize = MAX_REGION_TSIZE * MAX_REGION_TSIZE;
+    const F32 max_region_vsize = (F32)(MAX_REGION_TSIZE * MAX_REGION_TSIZE);
     static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");  // default: 32
-    F32 update_count = mUUIDMap.size() / 50;
+    U64 update_count = mUUIDMap.size() / 50;
     update_count = llmax(MIN_UPDATE_COUNT, update_count);
 
     {
@@ -1251,8 +1233,8 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
 
     // update N textures at beginning of mImageList
     static const S32 MIN_UPDATE_COUNT = gSavedSettings.getS32("TextureFetchUpdateMinCount");       // default: 32
-    F32 update_count = mUUIDMap.size() / 50;
-    update_count = llmax( (F32)MIN_UPDATE_COUNT, update_count);
+    U64 update_count = mUUIDMap.size() / 50;
+    update_count = (U64)llmax( (F32)MIN_UPDATE_COUNT, update_count);
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vtluift - copy");
 
@@ -1278,6 +1260,7 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     }
 
     LLTimer timer;
+    LLPointer<LLViewerTexture> last_imagep = nullptr;
 
     for (auto& imagep : entries)
     {

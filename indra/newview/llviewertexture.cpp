@@ -527,8 +527,7 @@ void LLViewerTexture::updateClass()
     F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 512.0;
     F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 512.0;
     F64 render_bytes_alloc = LLRenderTarget::sBytesAllocated / 1024.0 / 512.0;
-    F32 texturelist_bytes_coming = gTextureList.mListMemoryIncomingBytes / 1024.0 / 512.0;
-    F64 render_bytes_alloc = LLRenderTarget::sBytesAllocated / 1024.0 / 512.0;
+    F64 texturelist_bytes_coming = gTextureList.mListMemoryIncomingBytes / 1024.0 / 512.0;
 
     // get an estimate of how much video memory we're using
     // NOTE: our metrics miss about half the vram we use, so this biases high but turns out to typically be within 5% of the real number
@@ -742,7 +741,7 @@ void LLViewerTexture::forceImmediateUpdate()
 {
 }
 
-void LLViewerTexture::addTextureStats(F32 virtual_size, bool needs_gltexture) const
+bool LLViewerTexture::addTextureStats(F32 virtual_size, bool needs_gltexture) const
 {
     bool needs_update = false;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
@@ -1237,17 +1236,17 @@ bool LLViewerFetchedTexture::isDeleted()
     return mTextureState == DELETED;
 }
 
-BOOL LLViewerFetchedTexture::isInactive()
+bool LLViewerFetchedTexture::isInactive()
 {
     return mTextureState == INACTIVE;
 }
 
-BOOL LLViewerFetchedTexture::isDeletionCandidate()
+bool LLViewerFetchedTexture::isDeletionCandidate()
 {
     return mTextureState == DELETION_CANDIDATE;
 }
 
-BOOL LLViewerFetchedTexture::isActive()
+bool LLViewerFetchedTexture::isActive()
 {
     return mTextureState >= ACTIVE;
 }
@@ -1277,7 +1276,7 @@ void LLViewerFetchedTexture::setInactive(bool found)
 }
 // </TS:3T>
 
-BOOL LLViewerFetchedTexture::isFullyLoaded() const
+bool LLViewerFetchedTexture::isFullyLoaded() const
 {
     // Unfortunately, the boolean "mFullyLoaded" is never updated correctly so we use that logic
     // to check if the texture is there and completely downloaded

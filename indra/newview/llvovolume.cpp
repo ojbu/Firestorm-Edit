@@ -1190,7 +1190,7 @@ bool LLVOVolume::isMeshAssetTextured()
                   {
                       return isFaceTextured(n++);
                   });
-    S32 num_faces_textured = std::reduce(std::execution::par, work_list.begin(), work_list.end());
+    S32 num_faces_textured = (S32)std::reduce(std::execution::par, work_list.begin(), work_list.end());
 
     return bool(num_faces_textured == mDrawable->getNumFaces());
 }

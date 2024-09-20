@@ -827,7 +827,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             gPipeline.updateGeom(max_geom_update_time);
             stop_glerror();
         }
-        int32_t obj_time = objtimer.getElapsedTimeF32() * 1000000;
+        int32_t obj_time = (int32_t)objtimer.getElapsedTimeF32() * 1000000;
         frame_obj_counts.push_back(obj_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
@@ -952,7 +952,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             }
         }
 
-        int32_t text_time = texttimer.getElapsedTimeF32() * 1000000;
+        int32_t text_time = (int32_t)texttimer.getElapsedTimeF32() * 1000000;
         frame_text_counts.push_back(text_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
@@ -1130,7 +1130,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             gGL.setColorMask(true, true);
             gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance(), true);
         }
-        int32_t geom_time = geomtimer.getElapsedTimeF32() * 1000000;
+        int32_t geom_time = (int32_t)geomtimer.getElapsedTimeF32() * 1000000;
         frame_geom_counts.push_back(geom_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
@@ -1186,7 +1186,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
         gPipeline.clearReferences();
 
-        int32_t render_time = rendertimer.getElapsedTimeF32() * 1000000;
+        int32_t render_time = (int32_t)rendertimer.getElapsedTimeF32() * 1000000;
         frame_secpart_counts.push_back(render_time);
         if (gRecentFrameCount == 1 && current_frame > 500)
         {
@@ -1218,7 +1218,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         LLGLSLShader::finishProfile();
     }
     
-    int32_t draw_time = drawtimer.getElapsedTimeF32() * 1000000;
+    int32_t draw_time = (int32_t)drawtimer.getElapsedTimeF32() * 1000000;
     frame_draw_counts.push_back(draw_time);
     if (gRecentFrameCount == 1 && current_frame > 500)
     {
