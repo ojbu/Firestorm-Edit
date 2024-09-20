@@ -67,7 +67,7 @@ struct FSObjectProperties
     LLUUID owner_id;
     LLUUID group_id;
     LLUUID ownership_id;
-    BOOL group_owned;  // used in LL function that uses BOOL instead of bool
+    bool group_owned;
     U64 creation_date;
     U32 base_mask, owner_mask, group_mask, everyone_mask, next_owner_mask;
     LLSaleInfo sale_info;
@@ -110,7 +110,7 @@ public:
     FSAreaSearch(const LLSD &);
     virtual ~FSAreaSearch();
 
-    /*virtual*/ BOOL postBuild();
+    /*virtual*/ bool postBuild();
     virtual void draw();
     virtual void onOpen(const LLSD& key);
 
@@ -284,7 +284,7 @@ public:
     FSPanelAreaSearchList(FSAreaSearch* pointer);
     virtual ~FSPanelAreaSearchList();
 
-    /*virtual*/ BOOL postBuild();
+    /*virtual*/ bool postBuild();
 
     void setCounterText();
     void setCounterText(LLStringUtil::format_map_t args);
@@ -307,6 +307,7 @@ private:
 
     bool onContextMenuItemClick(const LLSD& userdata);
     bool onContextMenuItemEnable(const LLSD& userdata);
+    bool onContextMenuItemVisibleRLV(const LLSD& userdata);
 
     void onColumnVisibilityChecked(const LLSD& userdata);
     bool onEnableColumnVisibilityChecked(const LLSD& userdata);
@@ -336,8 +337,8 @@ public:
     FSPanelAreaSearchFind(FSAreaSearch* pointer);
     virtual ~FSPanelAreaSearchFind() = default;
 
-    /*virtual*/ BOOL postBuild();
-    /*virtual*/ BOOL handleKeyHere(KEY key,MASK mask);
+    /*virtual*/ bool postBuild();
+    /*virtual*/ bool handleKeyHere(KEY key,MASK mask);
 
     LLLineEditor* mNameLineEditor;
     LLLineEditor* mDescriptionLineEditor;
@@ -369,7 +370,7 @@ public:
     FSPanelAreaSearchFilter(FSAreaSearch* pointer);
     virtual ~FSPanelAreaSearchFilter() = default;
 
-    /*virtual*/ BOOL postBuild();
+    /*virtual*/ bool postBuild();
 
 private:
     void onCommitCheckbox();
@@ -435,7 +436,7 @@ public:
     FSPanelAreaSearchAdvanced() = default;
     virtual ~FSPanelAreaSearchAdvanced() = default;
 
-    /*virtual*/ BOOL postBuild();
+    /*virtual*/ bool postBuild();
 
     LLCheckBoxCtrl* mCheckboxClickTouch;
     LLCheckBoxCtrl* mCheckboxClickBuy;
