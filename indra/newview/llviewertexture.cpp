@@ -537,10 +537,11 @@ void LLViewerTexture::updateClass()
 
     // TommyTheTerrible - Start Bias creep upwards at 4/5ths VRAM used.
     F32 whatRemains = budget * 0.80f;
-    F32 target      = llmax(budget - whatRemains, MIN_VRAM_BUDGET);
+    F32 target      = llmax(budget, MIN_VRAM_BUDGET);
     sFreeVRAMMegabytes = llmax(target - used, 0.f);
 
-    F32 over_pct        = llmax((used - target) / target, 0.f);
+
+    F32 over_pct = llmax((used - target - whatRemains) / target, 0.f);
     //sDesiredDiscardBias = llclamp(1.f + over_pct, 1, 6);
     sDesiredDiscardBias = (1.f + over_pct);
 

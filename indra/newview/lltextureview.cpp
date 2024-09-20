@@ -620,8 +620,8 @@ void LLGLTexMemBar::draw()
     gGL.color4f(0.5f, 0.5f, 0.5f, 0.75f);
     gl_rect_2d(left, top, right, bottom);
 
-    U32 gpu_used = gGLManager.mVRAM - (S32)LLViewerTexture::sFreeVRAMMegabytes;
-    color = (gpu_used < (U32)llfloor(gGLManager.mVRAM * 0.85f)) ? LLColor4::green :
+    S32 gpu_used = gGLManager.mVRAM - (S32)LLViewerTexture::sFreeVRAMMegabytes;
+    color = (gpu_used < llfloor(gGLManager.mVRAM * 0.85f)) ? LLColor4::green :
         (gpu_used < gGLManager.mVRAM) ? LLColor4::yellow : LLColor4::red;
     color[VALPHA] = .75f;
 
