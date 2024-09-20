@@ -85,7 +85,7 @@ private:
     typedef std::vector<LLAvatarBoneInfo*> bones_t;
     bones_t mChildren;
     //BD - Poser
-    BOOL mHasPosition;
+    bool mHasPosition;
 };
 
 //------------------------------------------------------------------------
@@ -1652,7 +1652,7 @@ bool LLAvatarBoneInfo::parseXml(LLXmlTreeNode* node)
     static LLStdStringHandle reposition_string = LLXmlTree::addAttributeString("reposition");
     if (!node->getFastAttributeBOOL(reposition_string, mHasPosition))
     {
-        mHasPosition = FALSE;
+        mHasPosition = false;
     }
 
     // parse children

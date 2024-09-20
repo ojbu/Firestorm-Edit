@@ -9401,7 +9401,7 @@ bool LLVOAvatar::processFullyLoadedChange(bool loading)
                     //mFirstUseDelaySeconds *= 1.25;
                 }
         }
-        mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > mFirstUseDelaySeconds ||
+        mFullyLoaded = (mFullyLoadedTimer.getElapsedTimeF32() > first_use_delay ||
                         (attachments_ready && mFullyLoadedTimer.getElapsedTimeF32() > attachment_check_delay)
                         || (mNumSameCOFVersion > 2 && mRenderUnloadedAvatar));
     }

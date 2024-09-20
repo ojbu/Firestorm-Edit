@@ -3551,7 +3551,7 @@ void find_object_search(U8 type)
 {
     // Types: 0 = Owner, 1 = Creator, 2 = Attachments, 3 = By Name
     LLUUID owner_id;
-    BOOL is_group = FALSE;
+    bool is_group = false;
     LLSelectMgr::getInstance()->getSelection()->getFirstRootNode()->mPermissions->getOwnership(owner_id, is_group);
     std::string object_name = LLSelectMgr::getInstance()->getSelection()->getFirstRootNode()->mName;
     LLUUID creator_id = LLSelectMgr::getInstance()->getSelection()->getFirstRootNode()->mPermissions->getCreator();

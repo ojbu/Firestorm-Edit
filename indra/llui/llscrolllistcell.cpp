@@ -717,7 +717,7 @@ void LLScrollListLineEditor::draw(const LLColor4& color, const LLColor4& highlig
     mLineEditor->draw();
 }
 
-BOOL LLScrollListLineEditor::handleClick()
+bool LLScrollListLineEditor::handleClick()
 {
     if (mLineEditor->getEnabled())
     {
@@ -725,7 +725,7 @@ BOOL LLScrollListLineEditor::handleClick()
         mLineEditor->selectAll();
     }
     // return value changes selection?
-    return FALSE; //TRUE;
+    return false; //TRUE;
 }
 
 BOOL LLScrollListLineEditor::handleUnicodeChar(llwchar uni_char, BOOL called_from_parent)
@@ -769,7 +769,7 @@ LLScrollListMultiSlider::LLScrollListMultiSlider(const LLScrollListCell::Params&
         setWidth(rect.getWidth()); //check_box->getWidth();
     }
 
-    mMultiSlider->setColor(p.color);
+    mMultiSlider->setColor((LLUIColor)p.color);
 }
 
 LLScrollListMultiSlider::~LLScrollListMultiSlider()

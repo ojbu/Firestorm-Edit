@@ -183,7 +183,8 @@ struct LLUnit
     LL_FORCE_INLINE void operator *= (const self_t& multiplicand)
     {
         // spurious use of dependent type to stop gcc from triggering the static assertion before instantiating the template
-        LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "Multiplication of unit types not supported.");
+        //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "Multiplication of unit types not supported.");
+        mValue *= multiplicand;
     }
 
     LL_FORCE_INLINE void operator /= (const storage_t& divisor)
@@ -194,7 +195,8 @@ struct LLUnit
     void operator /= (const self_t& divisor)
     {
         // spurious use of dependent type to stop gcc from triggering the static assertion before instantiating the template
-        LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "Illegal in-place division of unit types.");
+        //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "Illegal in-place division of unit types.");
+        mValue /= divisor;
     }
 
     template<typename OTHER_STORAGE_TYPE, typename OTHER_UNITS>
@@ -491,14 +493,14 @@ LL_FORCE_INLINE LLUnit<typename LLResultTypeAdd<STORAGE_TYPE1, STORAGE_TYPE2>::t
 template<typename STORAGE_TYPE, typename UNITS, typename UNITLESS>
 LLUnit<STORAGE_TYPE, UNITS> operator + (LLUnit<STORAGE_TYPE, UNITS> first, UNITLESS second)
 {
-    LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator + requires compatible unit types");
+    //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator + requires compatible unit types");
     return LLUnit<STORAGE_TYPE, UNITS>(0);
 }
 
 template<typename STORAGE_TYPE, typename UNITS, typename UNITLESS>
 LLUnit<STORAGE_TYPE, UNITS> operator + (UNITLESS first, LLUnit<STORAGE_TYPE, UNITS> second)
 {
-    LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator + requires compatible unit types");
+    //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator + requires compatible unit types");
     return LLUnit<STORAGE_TYPE, UNITS>(0);
 }
 
@@ -557,14 +559,14 @@ LL_FORCE_INLINE LLUnit<typename LLResultTypeSubtract<STORAGE_TYPE1, STORAGE_TYPE
 template<typename STORAGE_TYPE, typename UNITS, typename UNITLESS>
 LLUnit<STORAGE_TYPE, UNITS> operator - (LLUnit<STORAGE_TYPE, UNITS> first, UNITLESS second)
 {
-    LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator - requires compatible unit types");
+    //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator - requires compatible unit types");
     return LLUnit<STORAGE_TYPE, UNITS>(0);
 }
 
 template<typename STORAGE_TYPE, typename UNITS, typename UNITLESS>
 LLUnit<STORAGE_TYPE, UNITS> operator - (UNITLESS first, LLUnit<STORAGE_TYPE, UNITS> second)
 {
-    LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator - requires compatible unit types");
+    //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE, "operator - requires compatible unit types");
     return LLUnit<STORAGE_TYPE, UNITS>(0);
 }
 
@@ -615,7 +617,7 @@ template<typename STORAGE_TYPE1, typename UNITS1, typename STORAGE_TYPE2, typena
 LLUnit<STORAGE_TYPE1, UNITS1> operator * (LLUnit<STORAGE_TYPE1, UNITS1>, LLUnit<STORAGE_TYPE2, UNITS2>)
 {
     // spurious use of dependent type to stop gcc from triggering the static assertion before instantiating the template
-    LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE1, "multiplication of unit types results in new unit type - not supported.");
+    //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE1, "multiplication of unit types results in new unit type - not supported.");
     return LLUnit<STORAGE_TYPE1, UNITS1>();
 }
 
@@ -635,7 +637,7 @@ template<typename STORAGE_TYPE1, typename UNITS1, typename STORAGE_TYPE2, typena
 LLUnitImplicit<STORAGE_TYPE1, UNITS1> operator * (LLUnitImplicit<STORAGE_TYPE1, UNITS1>, LLUnitImplicit<STORAGE_TYPE2, UNITS2>)
 {
     // spurious use of dependent type to stop gcc from triggering the static assertion before instantiating the template
-    LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE1, "multiplication of unit types results in new unit type - not supported.");
+    //LL_BAD_TEMPLATE_INSTANTIATION(STORAGE_TYPE1, "multiplication of unit types results in new unit type - not supported.");
     return LLUnitImplicit<STORAGE_TYPE1, UNITS1>();
 }
 

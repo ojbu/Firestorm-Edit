@@ -541,7 +541,7 @@ public:
             parameters.tcp_rates[nb_layers - 1] = (U32)(1.f / DEFAULT_COMPRESSION_RATE); // 1:8 by default
 
             // for each subsequent layer, computes its rate and adds surface * numcomps * 1/rate to the max_cs_size
-            U32 max_cs_size = (U32)(surface * image->numcomps * DEFAULT_COMPRESSION_RATE);
+            S32 max_cs_size = (U32)(surface * image->numcomps * DEFAULT_COMPRESSION_RATE);
             U32 multiplier;
             for (int i = nb_layers - 2; i >= 0; i--)
             {
