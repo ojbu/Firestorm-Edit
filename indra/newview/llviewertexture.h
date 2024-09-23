@@ -415,7 +415,7 @@ public:
     void setForParticle() { mForParticle = true; }
     BOOL forSculpt() const {return mForSculpt;}
     BOOL forHUD() const { return mForHUD; }
-    BOOL forParticle() const { return mForParticle; }
+    bool forParticle() const { return mForParticle; }
     bool isForSculptOnly() const;
 
     //raw image management

@@ -907,6 +907,11 @@ extern bool gCubeSnapshot;
 
 bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imagep)
 {
+    //if (imagep->isInDebug() || imagep->isUnremovable())
+    //{
+    //    //update_counter--;
+    //    return false;  // is in debug, ignore.
+    //}
 
     llassert(!gCubeSnapshot);
 
@@ -965,7 +970,7 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
     // Apply Discard Bias down-scale once after largest value found.
     if (imagep->isForSculptOnly())
         assignImportance++;
-    if (assignImportance < llmax(((LLViewerTexture::sDesiredDiscardBias - 1) * 0.20), 0))
+    if (assignImportance < (float)llmax(((LLViewerTexture::sDesiredDiscardBias - 1) * 0.20), 0))
         assignSize /= (float)llmax(pow((LLViewerTexture::sDesiredDiscardBias - 1), 4), 1);
     // If the greatest virtual size is not -1, apply it and find out if a fetch is necessary (mMaxVirtualSize changed)
     if (assignSize >= 0)
@@ -1037,9 +1042,22 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
     }
 
     imagep->processTextureStats();
-    return needs_fetch && imagep->isActive();
+    return needs_fetch;
 }
 
+//void LLViewerTextureList::setDebugFetching(LLViewerFetchedTexture* tex, S32 debug_level)
+//{
+//    LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
+//    if(!tex->setDebugFetching(debug_level))
+//    {
+//        return;
+//    }
+//
+//    const F32 DEBUG_PRIORITY = 100000.f;
+//    removeImageFromList(tex);
+//    tex->mMaxVirtualSize = DEBUG_PRIORITY;
+//    addImageToList(tex);
+//}
 
 F32 LLViewerTextureList::updateImagesCreateTextures(F32 max_time)
 {
@@ -1260,7 +1278,7 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     }
 
     LLTimer timer;
-    LLPointer<LLViewerTexture> last_imagep = nullptr;
+    LLPointer<LLViewerFetchedTexture> last_imagep;
 
     for (auto& imagep : entries)
     {

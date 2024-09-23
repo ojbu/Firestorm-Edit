@@ -2823,6 +2823,61 @@ void LLViewerFetchedTexture::forceImmediateUpdate()
     return;
 }
 
+//LLImageRaw* LLViewerFetchedTexture::reloadRawImage(S8 discard_level)
+//{
+//    llassert(mGLTexturep.notNull());
+//    llassert(discard_level >= 0);
+//    llassert(mComponents > 0);
+//
+//    if (mRawImage.notNull())
+//    {
+//        //mRawImage is in use by somebody else, do not delete it.
+//        return NULL;
+//    }
+//
+//    if(mSavedRawDiscardLevel >= 0 && mSavedRawDiscardLevel != discard_level) // <TS:3T> Stop expecting the discard level to always be lower
+//    {
+//        if (mSavedRawDiscardLevel != discard_level
+//            && mBoostLevel != BOOST_ICON
+//            && mBoostLevel != BOOST_THUMBNAIL)
+//        {
+//            mRawImage = new LLImageRaw(getWidth(discard_level), getHeight(discard_level), getComponents());
+//            mRawImage->copy(getSavedRawImage());
+//        }
+//        else
+//        {
+//            mRawImage = getSavedRawImage();
+//        }
+//        mRawDiscardLevel = discard_level;
+//    }
+//    //else
+//    //{
+//    //    //force to fetch raw image again if cached raw image is not good enough.
+//    //    if(mCachedRawDiscardLevel > discard_level)
+//    //    {
+//    //        mRawImage = mCachedRawImage;
+//    //        mRawDiscardLevel = mCachedRawDiscardLevel;
+//    //    }
+//    //    else //cached raw image is good enough, copy it.
+//    //    {
+//    //        if(mCachedRawDiscardLevel != discard_level)
+//    //        {
+//    //            mRawImage = new LLImageRaw(getWidth(discard_level), getHeight(discard_level), getComponents());
+//    //            mRawImage->copy(mCachedRawImage);
+//    //        }
+//    //        else
+//    //        {
+//    //            mRawImage = mCachedRawImage;
+//    //        }
+//    //        mRawDiscardLevel = discard_level;
+//    //    }
+//    //}
+//    mIsRawImageValid = TRUE;
+//    sRawCount++;
+//
+//    return mRawImage;
+//}
+
 bool LLViewerFetchedTexture::needsToSaveRawImage()
 {
     return mForceToSaveRawImage || mSaveRawImage;
@@ -3178,6 +3233,9 @@ void LLViewerLODTexture::processTextureStats()
     {
         mDesiredDiscardLevel = llmin(mDesiredDiscardLevel, (S8)mDesiredSavedRawDiscardLevel);
     }
+
+    // decay max virtual size over time
+    //mMaxVirtualSize *= 0.8f; <TS:3T> We should not do this, allow true values to stay in queue.
 
     // selection manager will immediately reset BOOST_SELECTED but never unsets it
     // unset it immediately after we consume it
