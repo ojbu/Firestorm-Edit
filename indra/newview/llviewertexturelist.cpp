@@ -1284,7 +1284,7 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
     {
         if (pair.second->getGLTexture() && pair.second->getNumRefs() > 1)
         {
-            if (pair.second->isActive() && (pair.second->isFetching() || pair.second->hasFetcher() || pair.second->hasCallbacks()))
+            if (pair.second->isFetching() || pair.second->hasFetcher() || pair.second->hasCallbacks())
                 pair.second->updateFetch();
         }
     }
