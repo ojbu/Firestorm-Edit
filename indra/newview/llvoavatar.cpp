@@ -9378,8 +9378,7 @@ bool LLVOAvatar::processFullyLoadedChange(bool loading)
     {
         mFullyLoadedTimer.reset();
     }
-    bool attachments_ready = (mFullyLoadedInitialized && mNumSameCOFVersion > 0 &&
-                              loaded_attachments == total_attachments && isFullyTextured());
+    bool attachments_ready = (mFullyLoadedInitialized && loaded_attachments == total_attachments && isFullyTextured());
     
     F32 attachment_check_delay = llmax(4.0f, gTextureList.getNumImages() / (100 * gFPSClamped));
     if (mFirstFullyVisible)

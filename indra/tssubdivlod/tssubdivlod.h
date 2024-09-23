@@ -45,7 +45,7 @@ class TSSubDivisonLOD
     void removeObject(std::string id, uint64_t node, std::string object);
     static void updateObject(std::string id, uint64_t old_node, uint64_t new_node, std::string object);
     static uint64_t getNumObjects(std::string id, uint64_t node);
-    static std::list<std::string> TSSubDivisonLOD::getObjects(std::string id, uint64_t node);
+    static std::list<std::string> getObjects(std::string id, uint64_t node);
     bool checkSim(std::string id, const uint64_t region_handle);
     static std::list<uint64_t> getNeighbors(uint64_t node);
     static float getNodeRadius(uint64_t node, const int depth, const float extents);
