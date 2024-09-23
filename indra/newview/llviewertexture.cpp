@@ -2952,7 +2952,7 @@ void LLViewerFetchedTexture::forceToSaveRawImage(S32 desired_discard, F32 kept_t
 
     if(!mForceToSaveRawImage || mDesiredSavedRawDiscardLevel < 0 || mDesiredSavedRawDiscardLevel > desired_discard)
     {
-        //mForceToSaveRawImage = true;
+        mForceToSaveRawImage = true;
         mDesiredSavedRawDiscardLevel = desired_discard;
     }
 }
