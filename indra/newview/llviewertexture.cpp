@@ -2177,8 +2177,7 @@ bool LLViewerFetchedTexture::updateFetch()
     if (forSculpt() || getBoostLevel() == LLGLTexture::BOOST_SCULPTED)
     {
         desired_discard = 0;
-        if (current_discard != desired_discard)
-            make_request = true;
+        make_request = (mRequestedDiscardLevel != desired_discard && !mIsFetching);
     }
 
     if (make_request)
