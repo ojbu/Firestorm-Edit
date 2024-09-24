@@ -6644,8 +6644,8 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
         LLFace* facep = *face_iter;
         LLViewerTexture* tex = facep->getTexture();
         const LLTextureEntry* te = facep->getTextureEntry();
-        LLMaterialPtr mat = te->getMaterialParams();
-        LLMaterialID matId = te->getMaterialID();
+        LLMaterialPtr mat = te ? te->getMaterialParams() : nullptr;
+        LLMaterialID matId = te ? te->getMaterialID() : NULL;
 
         // if (distance_sort)
         // {
@@ -6771,7 +6771,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 {
                     facep = *i;
                     const LLTextureEntry* nextTe = facep->getTextureEntry();
-                    if (nextTe->getMaterialID() != matId)
+                    if (nextTe && nextTe->getMaterialID() != matId)
                     {
                         break;
                     }
@@ -6851,22 +6851,25 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     LLVOVolume* vobj = drawablep->getVOVolume();
                     LLVolume* volume = vobj->getVolume();
 
-                    if (drawablep->isState(LLDrawable::ANIMATED_CHILD))
+                    if (drawablep && vobj)
                     {
-                        vobj->updateRelativeXform(true);
-                    }
+                        if (drawablep && drawablep->isState(LLDrawable::ANIMATED_CHILD))
+                        {
+                            vobj->updateRelativeXform(true);
+                        }
 
-                    U32 te_idx = facep->getTEOffset();
+                        U32 te_idx = facep->getTEOffset();
 
-                    if (!facep->getGeometryVolume(*volume, te_idx,
-                        vobj->getRelativeXform(), vobj->getRelativeXformInvTrans(), index_offset,true))
-                    {
-                        LL_WARNS() << "Failed to get geometry for face!" << LL_ENDL;
-                    }
+                        if (volume && !facep->getGeometryVolume(*volume, te_idx, vobj->getRelativeXform(), vobj->getRelativeXformInvTrans(),
+                                                      index_offset, true))
+                        {
+                            LL_WARNS() << "Failed to get geometry for face!" << LL_ENDL;
+                        }
 
-                    if (drawablep->isState(LLDrawable::ANIMATED_CHILD))
-                    {
-                        vobj->updateRelativeXform(false);
+                        if (drawablep->isState(LLDrawable::ANIMATED_CHILD))
+                        {
+                            vobj->updateRelativeXform(false);
+                        }
                     }
                 }
             }
@@ -6884,7 +6887,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             }
 
             const LLTextureEntry* te = facep->getTextureEntry();
-            LLGLTFMaterial* gltf_mat = te->getGLTFRenderMaterial();
+            LLGLTFMaterial* gltf_mat = te ? te->getGLTFRenderMaterial() : nullptr;
 
             // <FS:Beq> show legacy when editing the fallback materials.
             static LLCachedControl<bool> showSelectedinBP(gSavedSettings, "FSShowSelectedInBlinnPhong");
@@ -6907,7 +6910,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             bool can_be_shiny = false;
 
             // ignore traditional material if GLTF material is present
-            if (gltf_mat == nullptr)
+            if (gltf_mat == nullptr && te)
             {
                 mat = te->getMaterialParams().get();
 
@@ -6920,8 +6923,8 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 }
             }
 
-            F32 blinn_phong_alpha = te->getColor().mV[3];
-            bool use_legacy_bump = te->getBumpmap() && (te->getBumpmap() < 18) && (!mat || mat->getNormalID().isNull());
+            F32 blinn_phong_alpha = te ? te->getColor().mV[3] : 0 ;
+            bool use_legacy_bump = te ? te->getBumpmap() && (te->getBumpmap() < 18) && (!mat || mat->getNormalID().isNull()) : false;
             bool blinn_phong_opaque = blinn_phong_alpha >= 0.999f;
             bool blinn_phong_transparent = blinn_phong_alpha < 0.999f;
 
@@ -6954,7 +6957,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 // things without normals down the materials pipeline and will
                 // render poorly if not crash NORSPEC-240,314
                 //
-                if (te->getFullbright())
+                if (te && te->getFullbright())
                 {
                     if (mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
                     {
@@ -6973,7 +6976,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     }
                     else
                     {
-                        if (mat->getEnvironmentIntensity() > 0 || te->getShiny() > 0)
+                        if (mat->getEnvironmentIntensity() > 0 || (te && te->getShiny() > 0))
                         {
                             material_pass = true;
                         }
@@ -7072,7 +7075,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     registerFace(group, facep, LLRenderPass::PASS_ALPHA);
                 }
                 else if (gPipeline.shadersLoaded()
-                    && te->getShiny()
+                    && te && te->getShiny()
                     && can_be_shiny)
                 {
                     registerFace(group, facep, fullbright ? LLRenderPass::PASS_FULLBRIGHT_SHINY : LLRenderPass::PASS_SHINY);
@@ -7092,7 +7095,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 }
                 else if (facep->canRenderAsMask() && !hud_group)
                 {
-                    if (te->getFullbright() || LLPipeline::sNoAlpha)
+                    if ((te && te->getFullbright()) || LLPipeline::sNoAlpha)
                     {
                         registerFace(group, facep, LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK);
                     }
@@ -7107,10 +7110,11 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 }
             }
             else if (gPipeline.shadersLoaded()
+                && te
                 && te->getShiny()
                 && can_be_shiny)
             { //shiny
-                if (tex->getPrimaryFormat() == GL_ALPHA)
+                if (tex && tex->getPrimaryFormat() == GL_ALPHA)
                 { //invisiprim+shiny
                     registerFace(group, facep, LLRenderPass::PASS_INVISI_SHINY);
                     registerFace(group, facep, LLRenderPass::PASS_INVISIBLE);
@@ -7147,7 +7151,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             }
             else
             { //not alpha and not shiny
-                if (!is_alpha && tex->getPrimaryFormat() == GL_ALPHA)
+                if (!is_alpha && tex && tex->getPrimaryFormat() == GL_ALPHA)
                 { //invisiprim
                     registerFace(group, facep, LLRenderPass::PASS_INVISIBLE);
                 }
@@ -7190,6 +7194,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
 
                 if (!gPipeline.shadersLoaded() &&
                     !is_alpha &&
+                    te &&
                     te->getShiny())
                 { //shiny as an extra pass when shaders are disabled
                     registerFace(group, facep, LLRenderPass::PASS_SHINY);
@@ -7209,7 +7214,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 }
             }
 
-            if (!is_alpha && LLPipeline::sRenderGlow && te->getGlow() > 0.f)
+            if (!is_alpha && LLPipeline::sRenderGlow && te && te->getGlow() > 0.f)
             {
                 if (gltf_mat)
                 {
