@@ -539,10 +539,9 @@ void LLViewerTexture::updateClass()
     F32 whatRemains = budget * 0.80f;
     F32 target      = llmax(budget, MIN_VRAM_BUDGET);
     sFreeVRAMMegabytes = llmax(target - used, 0.f);
+    target = llmax(budget - whatRemains, MIN_VRAM_BUDGET);
 
-
-    F32 over_pct = llmax((used - target - whatRemains) / target, 0.f);
-    //sDesiredDiscardBias = llclamp(1.f + over_pct, 1, 6);
+    F32 over_pct = llmax((used - target) / target, 0.f);
     sDesiredDiscardBias = (1.f + over_pct);
 
 
