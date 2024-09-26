@@ -919,6 +919,9 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
     float assignSize = -1;
     float assignImportance = 0;  // Importance should always be zero or greater.
     float assignBoost = 0;
+    S32 for_anim = 0;
+    S32 for_hud = 0;
+    S32 for_particle = 0;
 
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE
     {
@@ -927,22 +930,23 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
             // Use parallelized generate to adjust virtual sizes for the faces and collect overall importance.
             std::vector<float> work(imagep->getNumFaces(i));
             std::generate(std::execution::par_unseq, work.begin(), work.end(),
-                [imagep, i, &assignSize, &assignImportance, n = 0]() mutable
+                [imagep, i, &assignSize, &assignImportance,
+                &for_anim, &for_hud, &for_particle
+                , n = 0]() mutable
             {
                 LLFace *face       = (*(imagep->getFaceList(i)))[n++];
                 float   vsize      =  64; // some faces do not have texture entries early, but we still need to allow the texture to be fetched
-                float   importance =  0;
-                bool    for_particle = false;
-                bool    calculate    = (face && face->getTextureEntry() && face->getDrawable()); // pre-calculate bool to help branch predictions
+                float   importance =  0;                
+                bool    calculate  = (face && face->getTextureEntry() && face->getDrawable()); // pre-calculate bool to help branch predictions
                 if (calculate)
                 {
                     const LLTextureEntry *te = face->getTextureEntry();
                     //F32 radius;
                     //F32 cos_angle_to_view_dir;
                     // Calculate the face's pixel area so getPixelArea is updated.
+                    // bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
                     face->fastcalcPixelArea();
                     face->fastcalcImportance();
-                    //bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
                     vsize = face->getPixelArea();
                     importance = face->getImportanceToCamera();
                     bool in_frustum = (importance > 0);
@@ -950,25 +954,26 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
                     F32 min_scale = llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT()));
                     min_scale = llmax(min_scale * min_scale, 0.1f);
                     vsize /= min_scale;
-                    bool is_anim = face->isState(LLFace::TEXTURE_ANIM);
-                    vsize *= (float)llmax(pow((is_anim && in_frustum) * 2, 4), 1);
-                    bool is_hud = face->isState(LLFace::HUD_RENDER);
-                    for_particle = face->isState(LLFace::PARTICLE);
-                    // Collect face's importance to total later for discard bias reductions
-                    importance += (float)((0.6 * (int) is_anim * (int) in_frustum) +
-                                 (1 * (int) is_hud) + (1 * (int) for_particle));
-                    vsize = llmax(vsize * (int) !for_particle, (65536 * (int) for_particle)); // (256 * 256)
-                    vsize = llmax(vsize * (int) !is_hud, (1048576 * (int) is_hud)); // (1024 * 1024)
-                    face->setVirtualSize(vsize);
+                    for_anim += face->isState(LLFace::TEXTURE_ANIM);
+                    for_hud += face->isState(LLFace::HUD_RENDER);
+                    for_particle += face->isState(LLFace::PARTICLE);
                 }
                 assignSize = llmax(assignSize, vsize);
                 assignImportance += importance;
-                return for_particle;
+                return vsize;
             });
         // Tally the work from the generated vector (parallelized)
-        assignBoost += std::reduce(std::execution::par_unseq, work.begin(), work.end());
+        //assignBoost += std::reduce(std::execution::par_unseq, work.begin(), work.end());
         }
     }
+    bool in_frustum = (assignImportance > 0);
+    // If texture is used for an animation, increase it's size
+    assignSize *= (float) llmax(pow((bool(for_anim) && in_frustum) * 2, 4), 1);
+    // Increase importance if used in an animation in frustum, a HUD or a particle.
+    assignImportance += (float) ((0.6 * (int) bool(for_anim) * (int) in_frustum) + (1 * (int)bool(for_hud)) + (1 * (int)bool(for_particle)));
+    // Assign BOOST_HIGH if used on a particle.
+    assignBoost += for_particle;
+
     if (assignBoost > 0 && imagep->getBoostLevel() <= 0)
         imagep->setBoostLevel(LLViewerTexture::BOOST_HIGH);
     // Apply Discard Bias down-scale once after largest value found.
