@@ -937,11 +937,15 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
                 if (calculate)
                 {
                     const LLTextureEntry *te = face->getTextureEntry();
-                    F32 radius;
-                    F32 cos_angle_to_view_dir;
+                    //F32 radius;
+                    //F32 cos_angle_to_view_dir;
                     // Calculate the face's pixel area so getPixelArea is updated.
-                    bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
+                    face->fastcalcPixelArea();
+                    face->fastcalcImportance();
+                    //bool in_frustum = face->calcPixelArea(cos_angle_to_view_dir, radius);
                     vsize = face->getPixelArea();
+                    importance = face->getImportanceToCamera();
+                    bool in_frustum = (importance > 0);
                     // Scale pixel area higher or lower depending on texture scale
                     F32 min_scale = llmin(fabsf(te->getScaleS()), fabsf(te->getScaleT()));
                     min_scale = llmax(min_scale * min_scale, 0.1f);
@@ -951,7 +955,7 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
                     bool is_hud = face->isState(LLFace::HUD_RENDER);
                     for_particle = face->isState(LLFace::PARTICLE);
                     // Collect face's importance to total later for discard bias reductions
-                    importance = (float)(llmax(importance, face->getImportanceToCamera()) + (0.6 * (int) is_anim * (int) in_frustum) +
+                    importance += (float)((0.6 * (int) is_anim * (int) in_frustum) +
                                  (1 * (int) is_hud) + (1 * (int) for_particle));
                     vsize = llmax(vsize * (int) !for_particle, (65536 * (int) for_particle)); // (256 * 256)
                     vsize = llmax(vsize * (int) !is_hud, (1048576 * (int) is_hud)); // (1024 * 1024)

@@ -2294,6 +2294,46 @@ F32 LLFace::getTextureVirtualSize()
     return face_area;
 }
 
+void LLFace::fastcalcPixelArea()
+{
+    LLViewerObject* vobj = getViewerObject();
+
+    if (vobj && vobj->mDrawable)
+    {
+        LLSpatialGroup* group = vobj->mDrawable->getSpatialGroup();
+        if (group)
+        {
+            mPixelArea = group->mPixelArea * (mBoundingSphereRadius / group->mRadius);
+        }
+    }
+    else {
+        mPixelArea = mBoundingSphereRadius * mBoundingSphereRadius * 3.14159f;
+    }
+}
+
+void LLFace::fastcalcImportance()
+{
+    LLViewerObject* vobj = getViewerObject();
+    bool in_frustum = true;
+    F32 importance = 0;
+    S64 window_area = (gViewerWindow->getWindowHeightRaw() * gViewerWindow->getWindowWidthRaw());
+    if (vobj && vobj->mDrawable)
+    {
+        LLSpatialGroup* group = vobj->mDrawable->getSpatialGroup();
+        if (group)
+        {
+            importance += (mPixelArea / group->mPixelArea / window_area);
+            in_frustum = group->isVisible();
+        }
+    }
+    else
+    {
+        importance = 1.f;        
+    }
+
+    mImportanceToCamera = importance * in_frustum;
+}
+
 bool LLFace::calcPixelArea(F32& cos_angle_to_view_dir, F32& radius)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_FACE;

@@ -248,6 +248,8 @@ public: //aligned members
 private:
     friend class LLViewerTextureList;
     F32         adjustPartialOverlapPixelArea(F32 cos_angle_to_view_dir, F32 radius );
+    void        fastcalcPixelArea();
+    void        fastcalcImportance();
     bool        calcPixelArea(F32& cos_angle_to_view_dir, F32& radius) ;
 public:
     static F32 calcImportanceToCamera(F32 to_view_dir, F32 dist);
