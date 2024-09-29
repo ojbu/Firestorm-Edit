@@ -2236,9 +2236,9 @@ bool LLViewerFetchedTexture::updateFetch()
         S32 fetch_request_discard = -1;
         fetch_request_discard = LLAppViewer::getTextureFetch()->createRequest(mFTType, mUrl, getID(), getTargetHost(), decode_priority,
                                                                               w, h, c, desired_discard, needsAux(), mCanUseHTTP);
-        if (false)
+        if (fetch_request_discard == -1)
         {
-            LL_WARNS() << "updateFetch MIP TEST " << mID << " " << (S32) getType() << " wXh " << w << " x " << h
+            LL_WARNS() << "fetchRequest: " << mID << " " << (S32) getType() << " wXh " << w << " x " << h
                        << " Current: " << current_discard << " Current Size: " << mGLTexturep->getWidth(current_discard) << " x "
                        << mGLTexturep->getHeight(current_discard) << " previous: " << (S32) mRequestedDiscardLevel
                        << " Desired: " << desired_discard << " mFaceList->size(): " << (S32) mFaceList->size()
