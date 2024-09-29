@@ -51,8 +51,9 @@ void BDAnimator::update()
     //     precise solution such as saving the vectors and reapplying them on leave.
     if (gAgentAvatarp && !gAgentAvatarp->mIsPosing)
     {
-        static LLCachedControl<bool> exp_scaling(gSavedSettings, "MouselookExperimentalHeadScaling");
-        if (exp_scaling && gAgentCamera.cameraMouselook())
+        //static LLCachedControl<bool> exp_scaling(gSavedSettings, "MouselookExperimentalHeadScaling");
+        //if (exp_scaling && gAgentCamera.cameraMouselook())
+        if (gAgentCamera.cameraMouselook())
         {
             LLJoint* joint;
             for (S32 i = 0; (joint = gAgentAvatarp->getCharacterJoint(i)); ++i)
