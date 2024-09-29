@@ -112,6 +112,21 @@ void LLViewerTextureList::init()
     doPreloadImages();
 }
 
+S32 LLViewerTextureList::getNumSculpt()
+{
+    S32 count = 0;
+    uuid_map_t::iterator iter(mUUIDMap.begin());
+    while (iter != mUUIDMap.end())
+    {
+        if (iter->second->forSculpt())
+            count++;        
+        ++iter;
+        if (iter == mUUIDMap.end())
+            break;
+    }
+    return count;
+}
+
 
 void LLViewerTextureList::doPreloadImages()
 {

@@ -1232,6 +1232,15 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         frame_draw_counts.clear();
     }
     drawtimer.stop();
+    if (gRecentFrameCount == 1 && current_frame > 500)
+    {
+        S32 sculpties = gTextureList.getNumSculpt();
+        LL_WARNS() << "Objects: " << gObjectList.getNumObjects()
+            << " active: " << gObjectList.getNumActiveObjects()
+            << " orphans: " << gObjectList.getOrphanCount()
+            << " sculpt: " << sculpties
+            << LL_ENDL;        
+    }    
 }
 
 // WIP simplified copy of display() that does minimal work
