@@ -301,8 +301,8 @@ public:
     void    setValue(const LLSD& value) override { mLineEditor->setValue(value); }
     void    onCommit() override { mLineEditor->onCommit(); }
     bool    handleClick() override;
-    virtual BOOL    handleUnicodeChar(llwchar uni_char, BOOL called_from_parent);
-    virtual BOOL    handleUnicodeCharHere(llwchar uni_char );
+    virtual bool    handleUnicodeChar(llwchar uni_char, bool called_from_parent);
+    virtual bool    handleUnicodeCharHere(llwchar uni_char );
     void    setEnabled(bool enable) override { mLineEditor->setEnabled(enable); }
 
     LLLineEditor*   getLineEditor()             { return mLineEditor; }

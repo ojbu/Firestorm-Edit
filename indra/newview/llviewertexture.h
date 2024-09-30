@@ -413,8 +413,8 @@ public:
     void setForSculpt();
     void setForHUD() { mForHUD = true; }
     void setForParticle() { mForParticle = true; }
-    BOOL forSculpt() const {return mForSculpt;}
-    BOOL forHUD() const { return mForHUD; }
+    bool forSculpt() const {return mForSculpt;}
+    bool forHUD() const { return mForHUD; }
     bool forParticle() const { return mForParticle; }
     bool isForSculptOnly() const;
 

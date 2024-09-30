@@ -728,14 +728,14 @@ bool LLScrollListLineEditor::handleClick()
     return false; //TRUE;
 }
 
-BOOL LLScrollListLineEditor::handleUnicodeChar(llwchar uni_char, BOOL called_from_parent)
+bool LLScrollListLineEditor::handleUnicodeChar(llwchar uni_char, bool called_from_parent)
 {
-    return TRUE;
+    return true;
 }
 
-BOOL LLScrollListLineEditor::handleUnicodeCharHere(llwchar uni_char )
+bool LLScrollListLineEditor::handleUnicodeCharHere(llwchar uni_char )
 {
-    return TRUE;
+    return true;
 }
 
 //

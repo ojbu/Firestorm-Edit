@@ -979,10 +979,11 @@ void BDFloaterPoseCreator::onKeyframeRemove()
 
         if (joint_motion->mRotationCurve.mNumKeys == 0)
         {
-            if (usage & LLJointState::ROT)
+            if (joint_state->getUsage() & LLJointState::ROT)
             {
-                usage &= !LLJointState::ROT;
-                joint_state->setUsage(usage);
+                //usage &= !LLJointState::ROT;
+                //joint_state->setUsage(usage);
+                joint_state->setUsage(joint_state->getUsage() | LLJointState::ROT);
             }
         }
     }
@@ -1003,10 +1004,11 @@ void BDFloaterPoseCreator::onKeyframeRemove()
 
         if (joint_motion->mPositionCurve.mNumKeys == 0)
         {
-            if (usage & LLJointState::POS)
+            if (joint_state->getUsage() & LLJointState::POS)
             {
-                usage &= !LLJointState::POS;
-                joint_state->setUsage(usage);
+                //usage &= !LLJointState::POS;
+                // joint_state->setUsage(usage);
+                joint_state->setUsage(joint_state->getUsage() | LLJointState::POS);
             }
         }
     }
@@ -1027,10 +1029,11 @@ void BDFloaterPoseCreator::onKeyframeRemove()
 
         if (joint_motion->mScaleCurve.mNumKeys == 0)
         {
-            if (usage & LLJointState::SCALE)
+            if (joint_state->getUsage() & LLJointState::SCALE)
             {
-                usage &= !LLJointState::SCALE;
-                joint_state->setUsage(usage);
+                //usage &= !LLJointState::SCALE;
+                //joint_state->setUsage(usage);
+                joint_state->setUsage(joint_state->getUsage() | LLJointState::SCALE);
             }
         }
     }
@@ -2875,7 +2878,7 @@ LLKeyframeMotion* BDFloaterPoseCreator::onReadyTempMotion(std::string filename, 
 {
     std::string outfilename = gDirUtilp->getExpandedFilename(LL_PATH_ANIMATIONS, filename);
     S32 file_size;
-    BOOL success = FALSE;
+    bool success = false;
     LLAPRFile infile;
     LLKeyframeMotion* mTempMotion = NULL;
     LLAssetID mMotionID;
