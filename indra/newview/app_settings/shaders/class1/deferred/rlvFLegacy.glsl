@@ -23,7 +23,7 @@ out vec4 frag_color;
 in vec2 vary_fragcoord;
 
 uniform sampler2DRect diffuseRect;
-uniform sampler2DRect depthMap;
+uniform sampler2D depthMap;
 uniform mat4 inv_proj;
 uniform vec2 screen_res;
 
@@ -124,7 +124,7 @@ vec3 chromaticAberration(sampler2DRect source, vec2 tc, vec2 redDrift, vec2 blue
 void main()
 {
     vec2 fragTC = vary_fragcoord.st;
-    float fragDepth = texture2DRect(depthMap, fragTC).x;
+    float fragDepth = texture(depthMap, fragTC).x;
     vec3 fragPosLocal = getPosition_d(fragTC, fragDepth).xyz;
     float distance = length(fragPosLocal.xyz - SPHERE_ORIGIN);
 
