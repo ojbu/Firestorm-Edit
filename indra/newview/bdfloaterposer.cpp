@@ -906,7 +906,7 @@ void BDFloaterPoser::onJointSet(LLUICtrl* ctrl, const LLSD& param)
                 S32 i = 0;
                 while (i < 3)
                 {
-                    const F32 this_value = item->getColumn(i + 2)->getValue().asReal();
+                    const F32 this_value = (F32)item->getColumn(i + 2)->getValue().asReal();
                     cell2[i]->setValue(ll_round(this_value, 0.001f));
                     ++i;
                 }

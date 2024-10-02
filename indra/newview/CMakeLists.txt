@@ -2420,7 +2420,6 @@ target_link_libraries(${VIEWER_BINARY_NAME}
         ll::tracy
         fs::glod # <FS:Beq/> restore GLOD dependencies
         fs::discord # <FS:Ansariel> Discord  support
-	tssubdivlod
         )
 
 if( TARGET ll::intel_memops )
@@ -2438,6 +2437,10 @@ if (WINDOWS OR DARWIN)
     target_link_libraries(${VIEWER_BINARY_NAME} fs::growl)
 endif (WINDOWS OR DARWIN)
 # </FS:Ansariel>
+
+if (WINDOWS)
+    target_link_libraries(${VIEWER_BINARY_NAME} tssubdivlod)
+endif (WINDOWS)
 
 if( TARGET ll::nvapi )
    target_link_libraries(${VIEWER_BINARY_NAME} ll::nvapi )

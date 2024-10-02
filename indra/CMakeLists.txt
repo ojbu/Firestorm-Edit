@@ -114,10 +114,10 @@ add_subdirectory(${LIBS_OPEN_PREFIX}llfilesystem)
 add_subdirectory(${LIBS_OPEN_PREFIX}llwebrtc)
 add_subdirectory(${LIBS_OPEN_PREFIX}llwindow)
 add_subdirectory(${LIBS_OPEN_PREFIX}llxml)
-add_subdirectory(${LIBS_OPEN_PREFIX}tssubdivlod)
 
 if (WINDOWS AND EXISTS ${LIBS_CLOSED_DIR}copy_win_scripts)
   add_subdirectory(${LIBS_CLOSED_PREFIX}copy_win_scripts)
+  add_subdirectory(${LIBS_OPEN_PREFIX}tssubdivlod)
 endif (WINDOWS AND EXISTS ${LIBS_CLOSED_DIR}copy_win_scripts)
 
 add_custom_target(viewer)

@@ -1226,14 +1226,14 @@ F32 LLViewerTextureList::updateBoostImagesFetchTextures(F32 max_time)
 
             if (iter->second->getGLTexture() && iter->second->getNumRefs() > 1)
             {
-                if ((iter->second->getBoostLevel() == LLGLTexture::LLGLTexture::BOOST_TERRAIN
-                    && iter->second->getMaxVirtualSize() < max_region_vsize) ||
-                    (iter->second->getBoostLevel() > LLGLTexture::BOOST_NONE &&
-                     iter->second->getBoostLevel() <= LLGLTexture::BOOST_MAX_LEVEL)
-                    && (iter->second->mBoostLoaded < 1 || (iter->second->forSculpt() ||
+                bool boost_terrain = (iter->second->getBoostLevel() == LLGLTexture::LLGLTexture::BOOST_TERRAIN
+                    && iter->second->getMaxVirtualSize() < max_region_vsize);
+                bool in_boost_range = (iter->second->getBoostLevel() > LLGLTexture::BOOST_NONE &&
+                     iter->second->getBoostLevel() <= LLGLTexture::BOOST_MAX_LEVEL);
+                bool boost_range_qualifiers = (iter->second->mBoostLoaded < 1 || (iter->second->forSculpt() ||
                         iter->second->getDiscardLevel() != iter->second->getDesiredDiscardLevel() ||
-                          iter->second->getDiscardLevel() < 0))
-                    )
+                          iter->second->getDiscardLevel() < 0));
+                if (boost_terrain || (in_boost_range && boost_range_qualifiers))
                     entries.push_back(iter->second);
             }
             ++iter;

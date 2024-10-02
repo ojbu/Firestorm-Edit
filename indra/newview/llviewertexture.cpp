@@ -2739,7 +2739,7 @@ bool LLViewerFetchedTexture::doLoadedCallbacks()
                 {
                     LL_WARNS() << "Raw Image with no Aux Data for callback" << LL_ENDL;
                 }
-                BOOL final = mRawDiscardLevel == entryp->mDesiredDiscard ? TRUE : FALSE; //<TS:3T> Stop expecting all new discards to be lower
+                bool final = (mRawDiscardLevel == entryp->mDesiredDiscard); //<TS:3T> Stop expecting all new discards to be lower
                 //LL_INFOS() << "Running callback for " << getID() << LL_ENDL;
                 //LL_INFOS() << mRawImage->getWidth() << "x" << mRawImage->getHeight() << LL_ENDL;
                 entryp->mLastUsedDiscard = mRawDiscardLevel;

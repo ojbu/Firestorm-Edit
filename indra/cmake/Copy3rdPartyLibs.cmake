@@ -8,7 +8,6 @@ include(CMakeCopyIfDifferent)
 include(Linking)
 include(OPENAL)
 include(FMODSTUDIO)
-include(MESAZINK)
 
 # When we copy our dependent libraries, we almost always want to copy them to
 # both the Release and the RelWithDebInfo staging directories. This has
@@ -27,6 +26,7 @@ endmacro()
 # set up platform specific lists of files that need to be copied
 ###################################################################
 if(WINDOWS)
+    include(MESAZINK)
     #*******************************
     # VIVOX - *NOTE: no debug version
     set(vivox_lib_dir "${ARCH_PREBUILT_DIRS_RELEASE}")
