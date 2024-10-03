@@ -718,7 +718,7 @@ void LLVOVolume::onDrawableUpdateFromServer()
 
 void LLVOVolume::animateTextures()
 {
-    if (!mDead)
+    if (!mDead && mDrawable) // <FS:Beq/> FIRE-34601 - bugsplat accessing null drawable.
     {
         shrinkWrap();
         F32 off_s = 0.f, off_t = 0.f, scale_s = 1.f, scale_t = 1.f, rot = 0.f;
@@ -6112,8 +6112,15 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                 {
                     continue;
                 }
-
-                LLFetchedGLTFMaterial *gltf_mat = (LLFetchedGLTFMaterial*) facep->getTextureEntry()->getGLTFRenderMaterial();
+                // <FS:Beq> FIRE-34589 - OpenSim crashes due to null facep. Only opensim, not sure why.
+                // LLFetchedGLTFMaterial *gltf_mat = (LLFetchedGLTFMaterial*) facep->getTextureEntry()->getGLTFRenderMaterial();
+                auto te = facep->getTextureEntry();
+                LLFetchedGLTFMaterial *gltf_mat = nullptr;
+                if (te)
+                {
+                    gltf_mat = (LLFetchedGLTFMaterial*)te->getGLTFRenderMaterial();
+                }
+                // </FS:Beq>
                 bool is_pbr = gltf_mat != nullptr;
 
                 if (is_pbr)
@@ -7142,7 +7149,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 && te->getShiny()
                 && can_be_shiny)
             { //shiny
-                if (tex && tex->getPrimaryFormat() == GL_ALPHA)
+                if (tex && tex->getPrimaryFormat() == GL_ALPHA) // <FS:Beq/> [FIRE-34534] guard additional cases of tex == null
                 { //invisiprim+shiny
                     registerFace(group, facep, LLRenderPass::PASS_INVISI_SHINY);
                     registerFace(group, facep, LLRenderPass::PASS_INVISIBLE);
@@ -7179,7 +7186,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             }
             else
             { //not alpha and not shiny
-                if (!is_alpha && tex && tex->getPrimaryFormat() == GL_ALPHA)
+                if (!is_alpha && tex && tex->getPrimaryFormat() == GL_ALPHA) // <FS:Beq/> FIRE-34540 bugsplat crash caused by tex==nullptr. This stops the crash, but should we continue and leave the face unregistered instead of falling through?
                 { //invisiprim
                     registerFace(group, facep, LLRenderPass::PASS_INVISIBLE);
                 }
