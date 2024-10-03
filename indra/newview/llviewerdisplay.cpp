@@ -1142,6 +1142,20 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             LL_WARNS() << "Render frames: " << frame_geom_counts.size() << " Max : " << max_geom_time << " min : " << min_geom_time
                        << " avg : " << average_geom_time << LL_ENDL;
             frame_geom_counts.clear();
+            LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->getFirstNode(NULL);
+            if (node) {
+                LLViewerObject* objectp = node->getObject();
+                LLVOVolume* vobj = (LLVOVolume*)objectp;
+                if (objectp)
+                {
+                    U8 test = 0;
+                    if (vobj)
+                        test = vobj->mTexAnimMode;
+                    LL_WARNS() << "Selected object: " << objectp->mID
+                        << " mTextAnimMode: " << (S32)test
+                        << LL_ENDL;
+                }
+            }            
         }
         geomtimer.stop();
         LLTimer rendertimer;
