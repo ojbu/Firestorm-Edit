@@ -26,7 +26,9 @@
 
 // A "volume" is a box, cylinder, sphere, or other primitive shape.
 
+#if __has_include(<execution>)
 #include <execution>
+#endif
 #include "llviewerprecompiledheaders.h"
 
 #include "llvovolume.h"
@@ -1186,12 +1188,21 @@ bool LLVOVolume::isMeshAssetTextured()
 {
 
     std::vector<float> work_list(mDrawable->getNumFaces());
+#ifdef __cpp_lib_execution
     std::generate(std::execution::par_unseq, work_list.begin(), work_list.end(),
                   [this, n = 0]() mutable
                   {
                       return isFaceTextured(n++);
                   });
     S32 num_faces_textured = (S32)std::reduce(std::execution::par, work_list.begin(), work_list.end());
+#else
+        std::generate(work_list.begin(), work_list.end(),
+                  [this, n = 0]() mutable
+                  {
+                      return isFaceTextured(n++);
+                  });
+    S32 num_faces_textured = (S32) std::reduce(work_list.begin(), work_list.end());
+#endif
 
     return bool(num_faces_textured == mDrawable->getNumFaces());
 }

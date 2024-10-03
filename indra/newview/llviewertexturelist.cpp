@@ -24,7 +24,9 @@
  * $/LicenseInfo$
  */
 
+#if __has_include(<execution>)
 #include <execution>
+#endif
 #include "llviewerprecompiledheaders.h"
 
 #include <sys/stat.h>
@@ -944,10 +946,17 @@ bool LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture *imag
         {
             // Use parallelized generate to adjust virtual sizes for the faces and collect overall importance.
             std::vector<float> work(imagep->getNumFaces(i));
+#ifdef __cpp_lib_execution
             std::generate(std::execution::par_unseq, work.begin(), work.end(),
                 [imagep, i, &assignSize, &assignImportance,
                 &for_anim, &for_hud, &for_particle
                 , n = 0]() mutable
+#else
+            std::generate(work.begin(), work.end(),
+                [imagep, i, &assignSize, &assignImportance,
+                &for_anim, &for_hud, &for_particle
+                , n = 0]() mutable
+#endif
             {
                 LLFace *face       = (*(imagep->getFaceList(i)))[n++];
                 float   vsize      =  64; // some faces do not have texture entries early, but we still need to allow the texture to be fetched

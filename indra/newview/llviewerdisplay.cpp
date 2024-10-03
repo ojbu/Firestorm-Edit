@@ -24,7 +24,9 @@
  * $/LicenseInfo$
  */
 
+#if __has_include(<execution>)
 #include <execution>
+#endif
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewerdisplay.h"
@@ -833,8 +835,11 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         {
             F32 max_texttime     = (F32) *std::max_element(frame_obj_counts.begin(), frame_obj_counts.end()) / 1000;
             F32 min_texttime     = (F32) *std::min_element(frame_obj_counts.begin(), frame_obj_counts.end()) / 1000;
-            F32 average_texttime = (F32)(std::reduce(std::execution::par_unseq, frame_obj_counts.begin(), frame_obj_counts.end()) /
+            F32 average_texttime = 0;
+#ifdef __cpp_lib_execution
+            average_texttime = (F32)(std::reduce(std::execution::par_unseq, frame_obj_counts.begin(), frame_obj_counts.end()) /
                                      frame_obj_counts.size() / 1000);
+#endif
             LL_WARNS() << "O frames: " << frame_obj_counts.size() << " Max : " << max_texttime << " min : " << min_texttime
                        << " avg : " << average_texttime << LL_ENDL;
             frame_obj_counts.clear();
@@ -958,8 +963,11 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         {
             F32 max_texttime = (F32)*std::max_element(frame_text_counts.begin(), frame_text_counts.end()) / 1000;
             F32 min_texttime = (F32)*std::min_element(frame_text_counts.begin(), frame_text_counts.end()) / 1000;
-            F32 average_texttime = (F32)(std::reduce(std::execution::par_unseq, frame_text_counts.begin(), frame_text_counts.end()) /
+            F32 average_texttime = 0;
+#ifdef __cpp_lib_execution
+            average_texttime = (F32)(std::reduce(std::execution::par_unseq, frame_text_counts.begin(), frame_text_counts.end()) /
                                    frame_text_counts.size() / 1000);
+#endif
             LL_WARNS() << "T frames: " << frame_text_counts.size() << " Max : " << max_texttime << " min : " << min_texttime
                        << " avg : " << average_texttime << LL_ENDL;
             frame_text_counts.clear();
@@ -1136,9 +1144,11 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         {
             F32 max_geom_time = (F32) *std::max_element(frame_geom_counts.begin(), frame_geom_counts.end()) / 1000;
             F32 min_geom_time = (F32) *std::min_element(frame_geom_counts.begin(), frame_geom_counts.end()) / 1000;
-            F32 average_geom_time =
-                (F32) (std::reduce(std::execution::par_unseq, frame_geom_counts.begin(), frame_geom_counts.end()) /
+            F32 average_geom_time = 0;
+#ifdef __cpp_lib_execution
+            average_geom_time = (F32) (std::reduce(std::execution::par_unseq, frame_geom_counts.begin(), frame_geom_counts.end()) /
                 frame_geom_counts.size() / 1000);
+#endif
             LL_WARNS() << "Render frames: " << frame_geom_counts.size() << " Max : " << max_geom_time << " min : " << min_geom_time
                        << " avg : " << average_geom_time << LL_ENDL;
             frame_geom_counts.clear();
@@ -1206,9 +1216,11 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         {
             F32 max_rendertime  = (F32) *std::max_element(frame_secpart_counts.begin(), frame_secpart_counts.end()) / 1000;
             F32 min_rendertime = (F32) *std::min_element(frame_secpart_counts.begin(), frame_secpart_counts.end()) / 1000;
-            F32 average_rendertime =
-                (F32)(std::reduce(std::execution::par_unseq, frame_secpart_counts.begin(), frame_secpart_counts.end()) /
+            F32 average_rendertime = 0;
+#ifdef __cpp_lib_execution
+            average_rendertime = (F32) (std::reduce(std::execution::par_unseq, frame_secpart_counts.begin(), frame_secpart_counts.end()) /
                 frame_secpart_counts.size() / 1000);
+#endif
             LL_WARNS() << "Unbind frames: " << frame_secpart_counts.size() << " Max : " << max_rendertime << " min : " << min_rendertime
                        << " avg : " << average_rendertime << LL_ENDL;
             frame_secpart_counts.clear();
@@ -1238,8 +1250,11 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
     {
         F32 max_drawtime     = (F32) *std::max_element(frame_draw_counts.begin(), frame_draw_counts.end()) / 1000;
         F32 min_drawtime     = (F32) *std::min_element(frame_draw_counts.begin(), frame_draw_counts.end()) / 1000;
-        F32 average_drawtime = (F32)(std::reduce(std::execution::par_unseq, frame_draw_counts.begin(), frame_draw_counts.end()) /
+        F32 average_drawtime = 0;
+#ifdef __cpp_lib_execution
+        average_drawtime     = (F32)(std::reduce(std::execution::par_unseq, frame_draw_counts.begin(), frame_draw_counts.end()) /
                                  frame_draw_counts.size() / 1000);
+#endif
         LL_WARNS() << "D frames: " << frame_draw_counts.size() << " Max : " << max_drawtime << " min : " << min_drawtime
                    << " avg : " << average_drawtime << LL_ENDL;
         LL_WARNS() << "Frame time: " << gFrameIntervalSeconds.value() << LL_ENDL;
