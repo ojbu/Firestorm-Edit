@@ -6212,6 +6212,8 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                         facep->setState(LLFace::FULLBRIGHT);
                     }
 
+                    /* //<TS:3T> This loop is running through multiple faces on a per face basis.
+                       //        Moving this to outside the loop to save processing.
                     if (vobj->mTextureAnimp && vobj->mTexAnimMode)
                     {
                         if (vobj->mTextureAnimp->mFace <= -1)
@@ -6235,6 +6237,7 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                             }
                         }
                     }
+                    */
 
                     if (type == LLDrawPool::POOL_ALPHA)
                     {
@@ -6361,6 +6364,31 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                 drawablep->clearState(LLDrawable::RIGGED);
                 vobj->updateRiggedVolume(false);
             }
+            // <TS:3T> Texture animation loop to set faces to animated from mTextureAnimp info.
+            if (vobj->mTextureAnimp)
+            {
+                if (vobj->mTextureAnimp->mFace <= -1)
+                {
+                    S32 face;
+                    for (face = 0; face < vobj->getNumTEs(); face++)
+                    {
+                        LLFace* facea = drawablep->getFace(face);
+                        if (facea)
+                        {
+                            facea->setState(LLFace::TEXTURE_ANIM);
+                        }
+                    }
+                }
+                else if (vobj->mTextureAnimp->mFace < vobj->getNumTEs())
+                {
+                    LLFace* facea = drawablep->getFace(vobj->mTextureAnimp->mFace);
+                    if (facea)
+                    {
+                        facea->setState(LLFace::TEXTURE_ANIM);
+                    }
+                }
+            }
+            // </TS:3T>
         }
     }
 
@@ -6443,7 +6471,7 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
     group->clearState(LLSpatialGroup::GEOM_DIRTY | LLSpatialGroup::ALPHA_DIRTY);
 }
 
-void LLVolumeGeometryManager::rebuildMesh(LLSpatialGroup* group)
+void LLVolumeGeometryManager::rebuildMesh(LLSpatialGroup* group) //
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
     llassert(group);
