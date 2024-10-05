@@ -4483,6 +4483,7 @@ void LLAgent::processAgentDataUpdate(LLMessageSystem *msg, void **)
         gAgent.mGroupID = active_id;
         msg->getU64(_PREHASH_AgentData, "GroupPowers", gAgent.mGroupPowers);
         msg->getString(_PREHASH_AgentData, _PREHASH_GroupName, gAgent.mGroupName);
+        LLGroupMgr::getInstance()->sendGroupPropertiesRequest(active_id);
     }
     else
     {
@@ -4700,6 +4701,44 @@ void LLAgent::processControlRelease(LLMessageSystem *msg, void **)
     }
 }
 */
+
+// <TS:3T> Group Stream Features
+void LLAgent::setGroupStream(std::string stream)
+{
+    if (gAgent.mGroupStream != stream)
+    {
+        gAgent.mGroupStream = stream;
+        // Update parcel audio to read mGroupStream
+        if (!stream.empty())
+            gAudiop->startInternetStream(stream);
+    }
+}
+
+void LLAgent::checkGroupStream(std::string group_charter)
+{
+    std::string string_start = "[";
+    std::string string_end   = "Stream]";
+    size_t      found_start  = 0;
+    size_t      found_end    = 0;
+    std::string stream_url;
+    if (group_charter.size() > 0)
+    {
+        found_end = group_charter.find(string_end);
+        if (found_end > 0)
+        {
+            found_start = group_charter.rfind(string_start, found_end);
+            if (found_start >= 0)
+            {
+                size_t string_length = (found_end - found_start - 2);
+                if (string_length > 0)
+                    stream_url = group_charter.substr(found_start + string_start.size(), string_length);
+            }
+        }
+    }
+    LLStringUtil::trim(stream_url);
+    setGroupStream(stream_url);
+}
+//</TS:3T>
 
 bool LLAgent::anyControlGrabbed() const
 {
