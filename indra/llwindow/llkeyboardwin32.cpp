@@ -119,7 +119,7 @@ LLKeyboardWin32::LLKeyboardWin32()
     mTranslateKeyMap[VK_APPS] = KEY_CONTEXT_MENU; // <FS:Ansariel> FIRE-19933: Open context menu on context menu key press
 
     // Build inverse map
-    std::map<U16, KEY>::iterator iter;
+    std::map<U32, KEY>::iterator iter;
     for (iter = mTranslateKeyMap.begin(); iter != mTranslateKeyMap.end(); iter++)
     {
         mInvTranslateKeyMap[iter->second] = iter->first;
@@ -202,7 +202,7 @@ MASK LLKeyboardWin32::updateModifiers()
 
 
 // mask is ignored, except for extended flag -- we poll the modifier keys for the other flags
-bool LLKeyboardWin32::handleKeyDown(const U16 key, MASK mask)
+bool LLKeyboardWin32::handleKeyDown(const U32 key, MASK mask)
 {
     KEY     translated_key;
     U32     translated_mask;
@@ -219,7 +219,7 @@ bool LLKeyboardWin32::handleKeyDown(const U16 key, MASK mask)
 }
 
 // mask is ignored, except for extended flag -- we poll the modifier keys for the other flags
-bool LLKeyboardWin32::handleKeyUp(const U16 key, MASK mask)
+bool LLKeyboardWin32::handleKeyUp(const U32 key, MASK mask)
 {
     KEY     translated_key;
     U32     translated_mask;

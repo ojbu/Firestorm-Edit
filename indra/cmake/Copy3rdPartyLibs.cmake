@@ -57,6 +57,7 @@ if(WINDOWS)
     set(release_files
         #openjp2.dll # <FS:Ansariel> Only copy OpenJPEG dll if needed
         glod.dll # <FS:Beq> restore GLOD
+        SDL2.dll
         )
 
     if(LLCOMMON_LINK_SHARED)
@@ -197,6 +198,8 @@ elseif(DARWIN)
         libndofdev.dylib
         libgrowl.dylib
         libgrowl++.dylib
+        libSDL2.dylib
+        libSDL2-2.0.dylib
        )
 
     if(LLCOMMON_LINK_SHARED)
@@ -230,6 +233,7 @@ elseif(LINUX)
         libortp.so
         libvivoxoal.so.1
         libvivoxsdk.so
+        libSDL2.so
         )
     set(slvoice_files SLVoice)
 

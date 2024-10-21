@@ -54,7 +54,7 @@
 #include "lldxhardware.h"
 #endif
 
-#if LL_SDL
+#if LL_SDL2
 #include "SDL2/SDL_video.h"
 
 #define GLH_EXT_GET_PROC_ADDRESS SDL_GL_GetProcAddress

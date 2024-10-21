@@ -39,8 +39,8 @@ public:
     LLKeyboardWin32();
     /*virtual*/ ~LLKeyboardWin32() {};
 
-    /*virtual*/ bool    handleKeyUp(const U16 key, MASK mask);
-    /*virtual*/ bool    handleKeyDown(const U16 key, MASK mask);
+    /*virtual*/ bool    handleKeyUp(const U32 key, MASK mask);
+    /*virtual*/ bool    handleKeyDown(const U32 key, MASK mask);
     /*virtual*/ void    resetMaskKeys();
     /*virtual*/ MASK    currentMask(bool for_mouse_event);
     /*virtual*/ void    scanKeyboard();
@@ -51,7 +51,7 @@ protected:
     MASK    updateModifiers();
     //void  setModifierKeyLevel( KEY key, bool new_state );
 private:
-    std::map<U16, KEY> mTranslateNumpadMap;
+    std::map<U32, KEY> mTranslateNumpadMap;
     std::map<KEY, U16> mInvTranslateNumpadMap;
 };
 
