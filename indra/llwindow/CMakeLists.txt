@@ -17,7 +17,6 @@ include(LLImage)
 include(LLWindow)
 include(UI)
 include(ViewerMiscLibs)
-include(SDL2)
 
 set(llwindow_SOURCE_FILES
     llcursortypes.cpp
@@ -58,7 +57,7 @@ set(llwindow_LINK_LIBRARIES
         ll::glh_linear
         ll::glext
         ll::uilibraries
-        ll::SDL2
+        ll::SDL
         )
 
 if(LINUX)

@@ -37,6 +37,9 @@
 #include "llwindow.h"   // beforeDialog()
 
 #undef LL_GTK
+#if LL_SDL
+#include "llwindowsdl.h" // for some X/GTK utils to help with filepickers
+#endif // LL_SDL
 
 #ifdef LL_FLTK
   #include "FL/Fl.H"
@@ -44,7 +47,6 @@
 #endif
 
 #if LL_LINUX
-#include "llwindowsdl.h" // for some X/GTK utils to help with filepickers
 #include "llhttpconstants.h"    // file picker uses some of thes constants on Linux
 #endif
 

@@ -706,9 +706,6 @@ class Windows_x86_64_Manifest(ViewerManifest):
             self.path("vivoxsdk_x64.dll")
             self.path("ortp_x64.dll")
 
-            # SDL2
-            self.path("SDL2.dll")
-
             # BugSplat
             if self.args.get('bugsplat'):
                 self.path("BsSndRpt64.exe")
@@ -1506,9 +1503,6 @@ class Darwin_x86_64_Manifest(ViewerManifest):
             # most everything goes in the Resources directory
             with self.prefix(dst="Resources"):
                 super().construct()
-
-                with self.prefix(src=relpkgdir, dst=""):                    
-                    self.path("libSDL2-*.dylib")
 
                 with self.prefix(src_dst="cursors_mac"):
                     self.path("*.tif")

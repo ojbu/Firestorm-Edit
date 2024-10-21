@@ -272,13 +272,12 @@ target_link_libraries(llui
         llmath
         ll::hunspell
         llcommon
-        ll::SDL2
     )
 
 # Add tests
 if(LL_TESTS)
   include(LLAddBuildTest)
-  set(test_libs llmessage llcorehttp llxml llrender llcommon ll::hunspell ll::SDL2)
+  set(test_libs llmessage llcorehttp llxml llrender llcommon ll::hunspell)
 
   SET(llui_TEST_SOURCE_FILES
       llurlmatch.cpp
@@ -288,7 +287,7 @@ if(LL_TESTS)
   # INTEGRATION TESTS
 
   if(NOT LINUX)
-    set(test_libs llui llmessage llcorehttp llxml llrender llcommon ll::hunspell ll::SDL2)
+    set(test_libs llui llmessage llcorehttp llxml llrender llcommon ll::hunspell )
     LL_ADD_INTEGRATION_TEST(llurlentry llurlentry.cpp "${test_libs}")
   endif(NOT LINUX)
 endif(LL_TESTS)

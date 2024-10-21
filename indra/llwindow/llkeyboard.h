@@ -56,11 +56,11 @@ class LLKeyboard
 {
 public:
     // <FS:ND> For SDL2 input is widened to U32 symbols
-//#ifndef LL_SDL2
-//    typedef U16 NATIVE_KEY_TYPE;
-//#else
+#ifndef LL_SDL2
+    typedef U16 NATIVE_KEY_TYPE;
+#else
     typedef U32 NATIVE_KEY_TYPE;
-//#endif
+#endif
     // </FS:MD>
 
     LLKeyboard();
