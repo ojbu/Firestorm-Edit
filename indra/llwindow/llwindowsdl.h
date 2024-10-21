@@ -52,20 +52,20 @@ public:
 
     void close() override;
 
-    bool getVisible() const override;
+    bool getVisible() const ;
 
-    bool getMinimized() const override;
+    bool getMinimized() const ;
 
-    bool getMaximized() const override;
+    bool getMaximized() const ;
 
     bool maximize() override;
     void minimize() override;
 
-    bool getPosition(LLCoordScreen *position) const override;
+    bool getPosition(LLCoordScreen *position) const ;
 
-    bool getSize(LLCoordScreen *size) const override;
+    bool getSize(LLCoordScreen *size) const ;
 
-    bool getSize(LLCoordWindow *size) const override;
+    bool getSize(LLCoordWindow *size) const ;
 
     bool setPosition(LLCoordScreen position) override;
 
@@ -106,16 +106,16 @@ public:
     void flashIcon(F32 seconds) override;
     void maybeStopFlashIcon();
 
-    F32 getGamma() const override;
+    F32 getGamma() const ;
     bool setGamma(const F32 gamma) override; // Set the gamma
     bool restoreGamma() override;            // Restore original gamma table (before updating gamma)
 
-    U32 getFSAASamples() const override;
+    U32 getFSAASamples() const ;
     void setFSAASamples(const U32 samples) override;
 
     void processMiscNativeEvents() override;
 
-    void gatherInput(bool app_has_focus) override;
+    void gatherInput(bool app_has_focus) ;
 
     void swapBuffers() override;
 
@@ -124,17 +124,17 @@ public:
     void delayInputProcessing()  override {};
 
     // handy coordinate space conversion routines
-    bool convertCoords(LLCoordScreen from, LLCoordWindow *to) const override;
+    bool convertCoords(LLCoordScreen from, LLCoordWindow *to) const ;
 
-    bool convertCoords(LLCoordWindow from, LLCoordScreen *to) const override;
+    bool convertCoords(LLCoordWindow from, LLCoordScreen *to) const ;
 
-    bool convertCoords(LLCoordWindow from, LLCoordGL *to) const override;
+    bool convertCoords(LLCoordWindow from, LLCoordGL *to) const ;
 
-    bool convertCoords(LLCoordGL from, LLCoordWindow *to) const override;
+    bool convertCoords(LLCoordGL from, LLCoordWindow *to) const ;
 
-    bool convertCoords(LLCoordScreen from, LLCoordGL *to) const override;
+    bool convertCoords(LLCoordScreen from, LLCoordGL *to) const ;
 
-    bool convertCoords(LLCoordGL from, LLCoordScreen *to) const override;
+    bool convertCoords(LLCoordGL from, LLCoordScreen *to) const ;
 
     LLWindowResolution *getSupportedResolutions(S32 &num_resolutions) override;
 
@@ -157,7 +157,7 @@ public:
 
     void spawnWebBrowser(const std::string &escaped_url, bool async) override;
 
-    void setTitle(const std::string title) override;
+    void setTitle(const std::string title) ;
 
     static std::vector<std::string> getDynamicFallbackFontList();
 
@@ -182,7 +182,7 @@ protected:
 
     bool isValid() override;
 
-    LLSD getNativeKeyData() const override;
+    LLSD getNativeKeyData() const ;
 
     void initCursors();
     void quitCursors();
