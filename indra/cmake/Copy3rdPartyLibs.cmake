@@ -233,7 +233,6 @@ elseif(LINUX)
         libortp.so
         libvivoxoal.so.1
         libvivoxsdk.so
-        libSDL2.so
         )
     set(slvoice_files SLVoice)
 
@@ -259,6 +258,7 @@ elseif(LINUX)
         #libfontconfig.so.1      #         user's system, and not be packaged with the viewer
         libaprutil-1.so.0
         libapr-1.so.0
+        libSDL2.so
        )
     else (NOT USESYSTEMLIBS)
       set(release_files
