@@ -33,7 +33,7 @@
 #include "llwindowmacosx.h"
 #elif LL_MESA_HEADLESS
 #include "llwindowmesaheadless.h"
-#elif LL_LINUX
+#elif LL_SDL
 #include "llwindowsdl.h"
 #endif
 
