@@ -141,7 +141,7 @@ public:
     void setTextureListType(S32 tex_type) { mTextureListType = tex_type; }
     S32 getTextureListType() { return mTextureListType; }
 
-    bool addTextureStats(F32 virtual_size, bool needs_gltexture = true) const;
+    bool addTextureStats(F32 virtual_size) const;
     void resetTextureStats();
     void setMaxVirtualSizeResetInterval(S32 interval)const {mMaxVirtualSizeResetInterval = interval;}
     void resetMaxVirtualSizeResetCounter()const {mMaxVirtualSizeResetCounter = mMaxVirtualSizeResetInterval;}
@@ -364,6 +364,8 @@ public:
     void updateVirtualSize() ;
 
     S32  getDesiredDiscardLevel()            { return mDesiredDiscardLevel; }
+    S32  getRequestedDiscardLevel()          { return mRequestedDiscardLevel; }
+    S32  getLastFetchState()                 { return mLastFetchState; }
     void setMinDiscardLevel(S32 discard)    { mMinDesiredDiscardLevel = llmin(mMinDesiredDiscardLevel,(S8)discard); }
 
     void setBoostLevel(S32 level) override;
@@ -489,7 +491,7 @@ protected:
     S32 mRequestedDiscardLevel;
     F32 mRequestedDownloadPriority;
     S32 mFetchState;
-    S32 mLastFetchState = -1; // DEBUG
+    S32 mLastFetchState = -2; // DEBUG <TS:3T> Adjust to -2 because fetch_request can respond with -1.
     U32 mFetchPriority;
     F32 mDownloadProgress;
     F32 mFetchDeltaTime;
@@ -499,7 +501,6 @@ protected:
     S8  mMinDesiredDiscardLevel;    // The minimum discard level we'd like to have
 
     F32 mMaxFaceImportance; // Keep track of highest importance from faces for textures.
-    U32 mIncomingChangeBits; // Keep track of change in bits
 
     bool mNeedsAux;                 // We need to decode the auxiliary channels
     bool mHasAux;                    // We have aux channels

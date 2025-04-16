@@ -127,6 +127,24 @@ LLUUID LLViewerTexture::sInvisiprimTexture2 = LLUUID::null;
 #define TEX_INVISIPRIM1 "e97cf410-8e61-7005-ec06-629eba4cd1fb"
 #define TEX_INVISIPRIM2 "38b86f85-2575-52a9-a531-23108d8da837"
 
+F32 nearest_power_of_two(F32 input)
+{
+    // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2Float
+    unsigned int const v = (unsigned int)input;
+    unsigned int r;
+    if (v > 1)
+    {
+        float f = (float) v;
+        unsigned int const t = 1U << ((*(unsigned int*) &f >> 23) - 0x7f);
+        unsigned int adjust = (t < v);
+        r = t << adjust;
+    }
+    else
+    {
+        r = 1;
+    }
+    return (F32)r;
+}
 
 //----------------------------------------------------------------------------------------------
 //namespace: LLViewerTextureAccess
@@ -524,25 +542,21 @@ void LLViewerTexture::updateClass()
 
     static LLCachedControl<U32> max_vram_budget(gSavedSettings, "RenderMaxVRAMBudget", 0);
 
-    F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 512.0;
-    F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 512.0;
-    F64 render_bytes_alloc = LLRenderTarget::sBytesAllocated / 1024.0 / 512.0;
-    F64 texturelist_bytes_coming = gTextureList.mListMemoryIncomingBytes / 1024.0 / 512.0;
+    F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 1024.0 * 1.3333f;
+    F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 1024.0;
+    F64 render_bytes_alloc = LLRenderTarget::sBytesAllocated / 1024.0 / 1024.0;
 
     // get an estimate of how much video memory we're using
     // NOTE: our metrics miss about half the vram we use, so this biases high but turns out to typically be within 5% of the real number
-    F32 used = (F32) ll_round(texture_bytes_alloc + vertex_bytes_alloc + render_bytes_alloc + texturelist_bytes_coming);
+    F32 used = (F32) ll_round(texture_bytes_alloc + vertex_bytes_alloc + render_bytes_alloc);
 
     F32 budget = max_vram_budget == 0 ? (F32)gGLManager.mVRAM : (F32)max_vram_budget;
 
     // TommyTheTerrible - Start Bias creep upwards at 4/5ths VRAM used.
-    F32 whatRemains = budget * 0.80f;
-    F32 target      = llmax(budget, MIN_VRAM_BUDGET);
-    sFreeVRAMMegabytes = llmax(target - used, 0.f);
-    target = llmax(budget - whatRemains, MIN_VRAM_BUDGET);
+    F32 target         = llmax((budget * 0.20f), MIN_VRAM_BUDGET);
+    sDesiredDiscardBias = llmax(used / target, 1.f);
 
-    F32 over_pct = llmax((used - target) / target, 0.f);
-    sDesiredDiscardBias = (1.f + over_pct);
+    sFreeVRAMMegabytes  = llmax(budget - used, 0.f);
 
 
     LLViewerTexture::sFreezeImageUpdates = false; // sDesiredDiscardBias > (desired_discard_bias_max - 1.0f);
@@ -741,20 +755,16 @@ void LLViewerTexture::forceImmediateUpdate()
 {
 }
 
-bool LLViewerTexture::addTextureStats(F32 virtual_size, bool needs_gltexture) const
+bool LLViewerTexture::addTextureStats(F32 virtual_size) const
 {
-    bool needs_update = false;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
-    if(needs_gltexture)
-    {
-        mNeedsGLTexture = true;
-    }
-
+    // Adjust virtual_size to nearest power of two
+    virtual_size = nearest_power_of_two(virtual_size);
     virtual_size = llmin(virtual_size, LLViewerFetchedTexture::sMaxVirtualSize);
-    if (mMaxVirtualSize != virtual_size)
-        needs_update = true;
+    virtual_size = virtual_size * (virtual_size >= 2); // Nearest power of 2 to 0 is 1, so we need to catch it.
+    bool needs_update = (mMaxVirtualSize != virtual_size);
+    mNeedsGLTexture = true;
     mMaxVirtualSize = virtual_size;
-
     return needs_update;
 }
 
@@ -1085,7 +1095,6 @@ void LLViewerFetchedTexture::init(bool firstinit)
     mForceCallbackFetch = false;
 
     mFTType = FTT_UNKNOWN;
-    mIncomingChangeBits = 0;
     mBoostLoaded = 0;
     mLastTimeUpdated.start();
 }
@@ -1915,15 +1924,16 @@ bool LLViewerFetchedTexture::updateFetch()
         return false;
     }
 
-    S32 current_discard = getCurrentDiscardLevelForFetching();
-    //S32 current_discard = getDiscardLevel();
+    //S32 current_discard = getCurrentDiscardLevelForFetching();
+    S32 current_discard = getDiscardLevel();
     S32 desired_discard = getDesiredDiscardLevel();
     F32 decode_priority = mMaxVirtualSize;
-    F32 importance      = getMaxFaceImportance();
+    F32 importance      = (F32)((0.01 + getMaxFaceImportance()) / 2);
 
-    if (((current_discard < 0 && importance > 0) || forHUD()))
+    if ((current_discard < 0 && importance > 0) || forHUD() || forParticle())
         decode_priority = (4096 * 4096);
-    decode_priority *= llclamp(importance, 1, 4);
+    decode_priority *= llclamp(importance, 0.1, 4);
+    decode_priority /= 1 + ((getFTType() == FTT_SERVER_BAKE) * 4);
     decode_priority = llmin(decode_priority, LLViewerFetchedTexture::sMaxVirtualSize);
     // </TS:3T>
 
@@ -1947,13 +1957,8 @@ bool LLViewerFetchedTexture::updateFetch()
         if (finished)
         {
             mIsFetching = false;
-            mLastFetchState = -1;
+            //mLastFetchState = -1; <TS:3T> Do not reset, to keep track of last fetch response.
             mLastPacketTimer.reset();
-            if (mIncomingChangeBits > 0)
-            {
-                gTextureList.mListMemoryIncomingBytes -= (S32)mIncomingChangeBits;
-                //mIncomingChangeBits = 0;
-            }
             mLastTimeUpdated.reset();
         }
         else
@@ -2112,31 +2117,22 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - create or missing");
         make_request = false;
     }
-    else if (current_discard < 0)
-    {
-        make_request = true; // This is here only to break from the if else chain, knowing all remaining require the opposite
-    }
-    else if (getType() == LLViewerTexture::FETCHED_TEXTURE && current_discard < desired_discard)
+    else if (getType() == LLViewerTexture::FETCHED_TEXTURE && current_discard >= 0 && current_discard <= desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FETCHED_TEXTURE");
         make_request = false;
     }
-    //else if (getFTType() == 1)
-    //{
-    //    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
-    //    desired_discard = 5;
-    //    //make_request = false;
-    //}
-    else if ((getFTType() > 0 && getFTType() < 4) && current_discard < desired_discard)
+    else if ((getFTType() > 0 && getFTType() < 4) && current_discard >= 0 && current_discard <= desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust FFT");
         make_request = false;
     }
-    else if ((mBoostLevel > 0) && current_discard < desired_discard)
+    else if ((mBoostLevel > 0) && current_discard >= 0 && current_discard <= desired_discard)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - do not LOD adjust Boost");
             make_request = false;
     }
+    /*
     //else if (hasCameraChanged(5) && (!forSculpt() || importance <= 0.0f || desired_discard > 2))
     else if (hasCameraChanged(5) && importance <= 0.0f && !forSculpt())
     {
@@ -2155,6 +2151,7 @@ bool LLViewerFetchedTexture::updateFetch()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - mMaxVirtualSize too small for update");
         //make_request = false;
     }
+    */
     //else if (current_discard >= 0 && current_discard <= mMinDiscardLevel)
     //{
     //    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - current < min");
@@ -2243,24 +2240,16 @@ bool LLViewerFetchedTexture::updateFetch()
                        << mGLTexturep->getHeight(current_discard) << " previous: " << (S32) mRequestedDiscardLevel
                        << " Desired: " << desired_discard << " mFaceList->size(): " << (S32) mFaceList->size()
                        << " needsAux(): " << (S32) needsAux() << " getFTType(): " << getFTType() << " forSculpt(): " << forSculpt()
-                       << " mForceToSaveRawImage: " << mForceToSaveRawImage << " mBoostLevel: " << mBoostLevel
+                       << " mForceToSaveRawImage: " << mForceToSaveRawImage << " mSavedRawDiscardLevel: " << mSavedRawDiscardLevel
+                       << " mBoostLevel: " << mBoostLevel
                        << " mMaxVirtualSize:" << (S32)mMaxVirtualSize
                        << " fetch_request_discard: " << (S32) fetch_request_discard << " sDesiredDiscardBias: " << LLViewerTexture::sDesiredDiscardBias
                        << LL_ENDL;
         }
+        mLastFetchState = fetch_request_discard;
         if (fetch_request_discard >= 0)
         {
             mLastUpdateFrame = LLViewerOctreeEntryData::getCurrentFrame();
-            if (w * h * c > 0) {
-                if (current_discard >=0 )
-                    mIncomingChangeBits =
-                        (getWidth(fetch_request_discard) * getHeight(fetch_request_discard) * getComponents());
-                else
-                    mIncomingChangeBits = (64 * 64 * 4);
-                gTextureList.mListMemoryIncomingBytes += (S32)mIncomingChangeBits;
-            }
-            //gTextureList.markTexture(this);
-
             LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("vftuf - request created");
             mHasFetcher = true;
             mIsFetching = true;

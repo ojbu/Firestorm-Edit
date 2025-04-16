@@ -2765,6 +2765,56 @@ void LLPipeline::rebuildPriorityGroups()
 
 }
 
+void LLPipeline::processDrawable(LLDrawable* drawable)
+{
+    LLDrawable::face_list_t faces = drawable->getFaces();
+    for (LLFace* face : faces)
+    {
+        face->markTextures();
+    }
+}
+
+void LLPipeline::processMarkedDrawables(F32 max_dtime)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+
+    LLTimer update_timer;
+
+    while (!mMarkedDrawables.empty() && update_timer.getElapsedTimeF32() < max_dtime)
+    {
+        LLDrawable* drawable = mMarkedDrawables.front();
+        if (!drawable->isDead())
+        {
+            processDrawable(drawable);
+        }
+        mMarkedDrawables.pop();
+    }
+}
+
+void LLPipeline::processMarkedTextures(F32 max_dtime)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+
+    LLTimer update_timer;
+
+    while (!gTextureList.mMarkedTextures.empty() && update_timer.getElapsedTimeF32() < max_dtime)
+    {
+        LLViewerTexture* texture = *gTextureList.mMarkedTextures.begin();
+        if (texture && texture->getGLTexture() && texture->getNumRefs() > 1)
+        {
+            LLViewerFetchedTexture* fetched_texture = LLViewerTextureManager::staticCastToFetchedTexture(texture);
+            if (fetched_texture)
+            {
+                if (gTextureList.updateImageDecodePriority(fetched_texture) && fetched_texture->isActive())
+                {
+                    fetched_texture->updateFetch();
+                }
+            }
+        }
+        gTextureList.mMarkedTextures.erase(texture);
+    }
+}
+
 void LLPipeline::updateGeom(F32 max_dtime)
 {
     LLTimer update_timer;
@@ -2782,6 +2832,8 @@ void LLPipeline::updateGeom(F32 max_dtime)
     // for now, only LLVOVolume does this to throttle LOD changes
     LLVOVolume::preUpdateGeom();
 
+    F64 update_interval = 30/1000; // <TS:3T> 30 frames per second for change limiting.
+
     // Iterate through all drawables on the priority build queue,
     for (LLDrawable::drawable_list_t::iterator iter = mBuildQ1.begin();
          iter != mBuildQ1.end();)
@@ -2790,6 +2842,15 @@ void LLPipeline::updateGeom(F32 max_dtime)
         LLDrawable* drawablep = *curiter;
         if (drawablep && !drawablep->isDead())
         {
+            // <TS:3T> Track drawable changes and limit to update interval and maximum run time.
+            F64 time_now = LLTimer::getElapsedSeconds();
+            F64 last_update = drawablep->mLastUpdate ? drawablep->mLastUpdate : 1;
+            if ((time_now > (last_update + update_interval)) && update_timer.getElapsedTimeF32() < max_dtime)
+                drawablep->mLastUpdate = time_now;
+            else
+                break; // Don't continue if within update interval;
+            // </TS:3T>
+
             if (drawablep->isUnload())
             {
                 drawablep->unload();
@@ -3537,6 +3598,23 @@ void LLPipeline::postSort(LLCamera &camera)
             {
                 group->rebuildGeom();
             }
+            if (LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD && !gCubeSnapshot)
+            {
+                if (!group->getSpatialPartition()->isBridge())
+                {
+                    group->updateDistance(camera);
+                }
+                else
+                {
+                    LLSpatialBridge* bridge = group->getSpatialPartition()->asBridge();
+
+                    if (bridge)
+                    {
+                        LLCamera trans_camera = bridge->transformCamera(camera);
+                        group->updateDistance(trans_camera);
+                    }
+                }
+            }
         }
         LL_PUSH_CALLSTACKS();
         // rebuild groups
@@ -3598,6 +3676,7 @@ void LLPipeline::postSort(LLCamera &camera)
 
             if (alpha != group->mDrawMap.end())
             {  // store alpha groups for sorting
+                /* <TS:3T> Distance updates moved to the full loop, not just alpha pass.
                 LLSpatialBridge *bridge = group->getSpatialPartition()->asBridge();
                 if (LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD && !gCubeSnapshot)
                 {
@@ -3611,7 +3690,7 @@ void LLPipeline::postSort(LLCamera &camera)
                         group->updateDistance(camera);
                     }
                 }
-
+                </TS:3T>*/
                 if (hasRenderType(LLDrawPool::POOL_ALPHA))
                 {
                     sCull->pushAlphaGroup(group);

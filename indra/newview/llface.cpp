@@ -278,6 +278,16 @@ void LLFace::setPool(LLFacePool* new_pool, LLViewerTexture *texturep)
     setTexture(texturep) ;
 }
 
+void LLFace::markTextures()
+{
+    for (U32 i = 0; i < LLRender::NUM_TEXTURE_CHANNELS; i++)
+    {
+        if (mTexture[i] && mTexture[i]->getBoostLevel() == LLGLTexture::BOOST_NONE &&
+            mTexture[i]->getType() == LLViewerTexture::LOD_TEXTURE)
+            gTextureList.mMarkedTextures.insert(mTexture[i]);
+    }
+}
+
 void LLFace::setTexture(U32 ch, LLViewerTexture* tex)
 {
     llassert(ch < LLRender::NUM_TEXTURE_CHANNELS);
@@ -2296,18 +2306,88 @@ F32 LLFace::getTextureVirtualSize()
 
 void LLFace::fastcalcPixelArea()
 {
-    LLViewerObject* vobj = getViewerObject();
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_FACE;
 
-    if (vobj && vobj->mDrawable)
+    // VECTORIZE THIS
+    // get area of circle around face
+
+    LLVector4a center;
+    LLVector4a size;
+
+    if (isState(LLFace::RIGGED))
     {
-        LLSpatialGroup* group = vobj->mDrawable->getSpatialGroup();
-        if (group)
+        // override with avatar bounding box
+        LLVOAvatar* avatar = mVObjp->getAvatar();
+        if (avatar && avatar->mDrawable)
         {
-            mPixelArea = group->mPixelArea * (mBoundingSphereRadius / group->mRadius);
+            center.load3(avatar->getPositionAgent().mV);
+            const LLVector4a* exts = avatar->mDrawable->getSpatialExtents();
+            size.setSub(exts[1], exts[0]);
+        }
+        else
+        {
+            return;
         }
     }
-    else {
-        mPixelArea = mBoundingSphereRadius * mBoundingSphereRadius * 3.14159f;
+    else
+    {
+        center.load3(getPositionAgent().mV);
+        size.setSub(mExtents[1], mExtents[0]);
+    }
+    size.mul(0.5f);
+
+    LLViewerCamera* camera = LLViewerCamera::getInstance();
+
+    F32        size_squared = size.dot3(size).getF32();
+    LLVector4a lookAt;
+    LLVector4a t;
+    t.load3(camera->getOrigin().mV);
+    lookAt.setSub(center, t);
+
+    F32 dist = lookAt.getLength3().getF32();
+    dist     = llmax(dist - size.getLength3().getF32(), 0.001f);
+
+    lookAt.normalize3fast();
+
+    // get area of circle around node
+    F32 app_angle = atanf((F32) sqrt(size_squared) / dist);
+    F32 radius        = app_angle * LLDrawable::sCurPixelAngle;
+    mPixelArea    = radius * radius * 3.14159f;
+    LLVector4a x_axis;
+    x_axis.load3(camera->getXAxis().mV);
+    F32 cos_angle_to_view_dir = lookAt.dot3(x_axis).getF32();
+
+    // if has media, check if the face is out of the view frustum.
+    if (hasMedia())
+    {
+        if (!camera->AABBInFrustum(center, size))
+        {
+            mImportanceToCamera = 0.f;
+        }
+        if (cos_angle_to_view_dir > camera->getCosHalfFov())  // the center is within the view frustum
+        {
+            cos_angle_to_view_dir = 1.0f;
+        }
+        else
+        {
+            LLVector4a d;
+            d.setSub(lookAt, x_axis);
+
+            if (dist * dist * d.dot3(d) < size_squared)
+            {
+                cos_angle_to_view_dir = 1.0f;
+            }
+        }
+    }
+
+    if (dist < mBoundingSphereRadius)  // camera is very close
+    {
+        cos_angle_to_view_dir = 1.0f;
+        mImportanceToCamera   = 1.0f;
+    }
+    else
+    {
+        mImportanceToCamera = LLFace::calcImportanceToCamera(cos_angle_to_view_dir, dist);
     }
 }
 
@@ -2322,7 +2402,7 @@ void LLFace::fastcalcImportance()
         LLSpatialGroup* group = vobj->mDrawable->getSpatialGroup();
         if (group)
         {
-            importance += (mPixelArea / group->mPixelArea / window_area);
+            importance += (mPixelArea / window_area);
             in_frustum = group->isVisible();
         }
     }
